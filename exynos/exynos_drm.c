@@ -401,52 +401,5 @@ exynos_handle_vendor(int fd, struct drm_event *e, void *ctx)
 int
 exynos_handle_event(struct exynos_device *dev, struct exynos_event_context *ctx)
 {
-	char buffer[1024];
-	int len, i;
-	struct drm_event *e;
-	struct drm_event_vblank *vblank;
-	drmEventContextPtr evctx = &ctx->base;
-
-	/* The DRM read semantics guarantees that we always get only
-	 * complete events. */
-	len = read(dev->fd, buffer, sizeof buffer);
-	if (len == 0)
-		return 0;
-	if (len < (int)sizeof *e)
-		return -1;
-
-	i = 0;
-	while (i < len) {
-		e = (struct drm_event *)(buffer + i);
-		switch (e->type) {
-		case DRM_EVENT_VBLANK:
-			if (evctx->version < 1 ||
-			    evctx->vblank_handler == NULL)
-				break;
-			vblank = (struct drm_event_vblank *) e;
-			evctx->vblank_handler(dev->fd,
-					      vblank->sequence,
-					      vblank->tv_sec,
-					      vblank->tv_usec,
-					      U642VOID (vblank->user_data));
-			break;
-		case DRM_EVENT_FLIP_COMPLETE:
-			if (evctx->version < 2 ||
-			    evctx->page_flip_handler == NULL)
-				break;
-			vblank = (struct drm_event_vblank *) e;
-			evctx->page_flip_handler(dev->fd,
-						 vblank->sequence,
-						 vblank->tv_sec,
-						 vblank->tv_usec,
-						 U642VOID (vblank->user_data));
-			break;
-		default:
-			exynos_handle_vendor(dev->fd, e, evctx);
-			break;
-		}
-		i += e->length;
-	}
-
-	return 0;
+	return drmHandleEvent2(dev->fd, &ctx->base, exynos_handle_vendor);
 }
