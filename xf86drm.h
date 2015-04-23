@@ -757,7 +757,28 @@ typedef struct _drmEventContext {
 
 } drmEventContext, *drmEventContextPtr;
 
+typedef void (*drmEventVendorHandler)(int fd, struct drm_event *e, void *ctx);
+
 extern int drmHandleEvent(int fd, drmEventContextPtr evctx);
+
+/*
+ * drmHandleEvent2() is an extended variant of drmHandleEvent() which
+ * allows handling of vendor-specific/non-core events.
+ * The function pointer 'vendorhandler' is used (if non-zero) to
+ * process non-core events. Users of have to prepare a container struct
+ * in the following way:
+ *
+ * struct vendor_event_context {
+ *		drmEventContext base;
+ *		int vendor_specific_data[num];
+ * };
+ *
+ * And then call:
+ * struct vendor_event_context ctx = {0};
+ * drmHandleEvent2(fd, &ctx.base, handler);
+ */
+extern int drmHandleEvent2(int fd, drmEventContextPtr evctx,
+	drmEventVendorHandler vendorhandler);
 
 extern char *drmGetDeviceNameFromFd(int fd);
 

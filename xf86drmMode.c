@@ -883,7 +883,8 @@ int drmModeCrtcSetGamma(int fd, uint32_t crtc_id, uint32_t size,
 	return DRM_IOCTL(fd, DRM_IOCTL_MODE_SETGAMMA, &l);
 }
 
-int drmHandleEvent(int fd, drmEventContextPtr evctx)
+int drmHandleEvent2(int fd, drmEventContextPtr evctx,
+			drmEventVendorHandler vendorhandler)
 {
 	char buffer[1024];
 	int len, i;
@@ -934,12 +935,19 @@ int drmHandleEvent(int fd, drmEventContextPtr evctx)
 							 user_data);
 			break;
 		default:
+			if (vendorhandler)
+				vendorhandler(fd, e, evctx);
 			break;
 		}
 		i += e->length;
 	}
 
 	return 0;
+}
+
+int drmHandleEvent(int fd, drmEventContextPtr evctx)
+{
+	return drmHandleEvent2(fd, evctx, NULL);
 }
 
 int drmModePageFlip(int fd, uint32_t crtc_id, uint32_t fb_id,
