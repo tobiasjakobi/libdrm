@@ -306,6 +306,26 @@ drm_public void *exynos_bo_map(struct exynos_bo *bo)
 	return bo->vaddr;
 }
 
+drm_public int exynos_bo_unmap(struct exynos_bo *bo)
+{
+	int ret = 0;
+
+	if (!bo->vaddr)
+		goto out;
+
+	ret = munmap(bo->vaddr, bo->size);
+	if (ret) {
+		fprintf(stderr, "failed to unmap buffer [%s].\n",
+			strerror(errno));
+		goto out;
+	}
+
+	bo->vaddr = NULL;
+
+out:
+	return ret;
+}
+
 /*
  * Export gem object to dmabuf as file descriptor.
  *

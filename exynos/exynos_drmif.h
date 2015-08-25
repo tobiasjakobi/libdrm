@@ -95,6 +95,7 @@ struct exynos_bo * exynos_bo_from_name(struct exynos_device *dev, uint32_t name)
 int exynos_bo_get_name(struct exynos_bo *bo, uint32_t *name);
 uint32_t exynos_bo_handle(struct exynos_bo *bo);
 void * exynos_bo_map(struct exynos_bo *bo);
+int exynos_bo_unmap(struct exynos_bo *bo);
 int exynos_prime_handle_to_fd(struct exynos_device *dev, uint32_t handle,
 					int *fd);
 int exynos_prime_fd_to_handle(struct exynos_device *dev, int fd,

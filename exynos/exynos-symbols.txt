@@ -5,6 +5,7 @@ exynos_bo_get_info
 exynos_bo_get_name
 exynos_bo_handle
 exynos_bo_map
+exynos_bo_unmap
 exynos_device_create
 exynos_device_destroy
 exynos_prime_fd_to_handle
