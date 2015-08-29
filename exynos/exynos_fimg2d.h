@@ -295,7 +295,7 @@ struct g2d_image {
 	unsigned int			color;
 	enum e_g2d_buf_type		buf_type;
 	unsigned int			bo[G2D_PLANE_MAX_NR];
-	struct drm_exynos_g2d_userptr	user_ptr[G2D_PLANE_MAX_NR];
+	uint64_t			user_ptr[G2D_PLANE_MAX_NR];
 	void				*mapped_ptr[G2D_PLANE_MAX_NR];
 };
 

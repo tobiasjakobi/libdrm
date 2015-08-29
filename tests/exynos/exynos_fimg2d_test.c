@@ -150,6 +150,32 @@ static struct exynos_bo *exynos_create_buffer(struct exynos_device *dev,
 	return bo;
 }
 
+/* Allocate buffer with malloc and register it as userptr (read/write). */
+static void *userptr_malloc(struct g2d_context *ctx, unsigned long size)
+{
+	void *userptr = malloc(size);
+	if (!userptr)
+		goto fail;
+
+	if (g2d_userptr_register(ctx, userptr, size, G2D_USERPTR_FLAG_RW)) {
+		free(userptr);
+		goto fail;
+	}
+
+	return userptr;
+
+fail:
+	fprintf(stderr, "failed to allocate/register userptr.\n");
+	return NULL;
+}
+
+/* Unregister a userptr and free the underlying buffer. */
+static void userptr_free(struct g2d_context *ctx, void *ptr)
+{
+	g2d_userptr_unregister(ctx, ptr);
+	free(ptr);
+}
+
 /* Allocate buffer and fill it with checkerboard pattern, where the tiles *
  * have a random color. The caller has to free the buffer.                */
 static void *create_checkerboard_pattern(unsigned int num_tiles_x,
@@ -245,7 +271,8 @@ static int g2d_copy_test(struct exynos_device *dev, struct exynos_bo *src,
 	struct g2d_context *ctx;
 	struct g2d_image src_img = {0}, dst_img = {0};
 	unsigned int src_x, src_y, dst_x, dst_y, img_w, img_h;
-	unsigned long userptr, size;
+	void *userptr = NULL;
+	unsigned long size;
 	int ret;
 
 	ctx = g2d_init(dev->fd);
@@ -268,15 +295,13 @@ static int g2d_copy_test(struct exynos_device *dev, struct exynos_bo *src,
 	case G2D_IMGBUF_USERPTR:
 		size = img_w * img_h * 4;
 
-		userptr = (unsigned long)malloc(size);
+		userptr = userptr_malloc(ctx, size);
 		if (!userptr) {
-			fprintf(stderr, "failed to allocate userptr.\n");
 			ret = -EFAULT;
 			goto fail;
 		}
 
-		src_img.user_ptr[0].userptr = userptr;
-		src_img.user_ptr[0].size = size;
+		src_img.user_ptr[0] = (uint64_t)(uintptr_t)userptr;
 		break;
 	case G2D_IMGBUF_COLOR:
 	default:
@@ -295,7 +320,7 @@ static int g2d_copy_test(struct exynos_device *dev, struct exynos_bo *src,
 	src_img.color = 0xffff0000;
 	ret = g2d_solid_fill(ctx, &src_img, src_x, src_y, img_w, img_h);
 	if (ret < 0)
-		goto err_free_userptr;
+		goto err_free;
 
 	dst_img.width = img_w;
 	dst_img.height = img_h;
@@ -306,14 +331,12 @@ static int g2d_copy_test(struct exynos_device *dev, struct exynos_bo *src,
 	ret = g2d_copy(ctx, &src_img, &dst_img, src_x, src_y, dst_x, dst_y,
 			img_w - 4, img_h - 4);
 	if (ret < 0)
-		goto err_free_userptr;
+		goto err_free;
 
 	g2d_exec(ctx);
 
-err_free_userptr:
-	if (type == G2D_IMGBUF_USERPTR)
-		if (userptr)
-			free((void *)userptr);
+err_free:
+	userptr_free(ctx, userptr);
 
 fail:
 	g2d_fini(ctx);
@@ -453,7 +476,8 @@ static int g2d_copy_with_scale_test(struct exynos_device *dev,
 	struct g2d_context *ctx;
 	struct g2d_image src_img = {0}, dst_img = {0};
 	unsigned int src_x, src_y, img_w, img_h;
-	unsigned long userptr, size;
+	void *userptr = NULL;
+	unsigned long size;
 	int ret;
 
 	ctx = g2d_init(dev->fd);
@@ -474,15 +498,13 @@ static int g2d_copy_with_scale_test(struct exynos_device *dev,
 	case G2D_IMGBUF_USERPTR:
 		size = img_w * img_h * 4;
 
-		userptr = (unsigned long)malloc(size);
+		userptr = userptr_malloc(ctx, size);
 		if (!userptr) {
-			fprintf(stderr, "failed to allocate userptr.\n");
 			ret = -EFAULT;
 			goto fail;
 		}
 
-		src_img.user_ptr[0].userptr = userptr;
-		src_img.user_ptr[0].size = size;
+		src_img.user_ptr[0] = (uint64_t)(uintptr_t)userptr;
 		break;
 	case G2D_IMGBUF_COLOR:
 	default:
@@ -501,12 +523,12 @@ static int g2d_copy_with_scale_test(struct exynos_device *dev,
 	src_img.color = 0xffffffff;
 	ret = g2d_solid_fill(ctx, &src_img, src_x, src_y, img_w ,  img_h);
 	if (ret < 0)
-		goto err_free_userptr;
+		goto err_free;
 
 	src_img.color = 0xff00ff00;
 	ret = g2d_solid_fill(ctx, &src_img, 5, 5, 100, 100);
 	if (ret < 0)
-		goto err_free_userptr;
+		goto err_free;
 
 	dst_img.width = img_w;
 	dst_img.height = img_h;
@@ -517,14 +539,12 @@ static int g2d_copy_with_scale_test(struct exynos_device *dev,
 	ret = g2d_copy_with_scale(ctx, &src_img, &dst_img, 5, 5, 100, 100,
 					100, 100, 200, 200, 0);
 	if (ret < 0)
-		goto err_free_userptr;
+		goto err_free;
 
 	g2d_exec(ctx);
 
-err_free_userptr:
-	if (type == G2D_IMGBUF_USERPTR)
-		if (userptr)
-			free((void *)userptr);
+err_free:
+	userptr_free(ctx, userptr);
 
 fail:
 	g2d_fini(ctx);
@@ -541,7 +561,8 @@ static int g2d_blend_test(struct exynos_device *dev,
 	struct g2d_context *ctx;
 	struct g2d_image src_img = {0}, dst_img = {0};
 	unsigned int src_x, src_y, dst_x, dst_y, img_w, img_h;
-	unsigned long userptr, size;
+	void *userptr = NULL;
+	unsigned long size;
 	int ret;
 
 	ctx = g2d_init(dev->fd);
@@ -564,15 +585,13 @@ static int g2d_blend_test(struct exynos_device *dev,
 	case G2D_IMGBUF_USERPTR:
 		size = img_w * img_h * 4;
 
-		userptr = (unsigned long)malloc(size);
+		userptr = userptr_malloc(ctx, size);
 		if (!userptr) {
-			fprintf(stderr, "failed to allocate userptr.\n");
 			ret = -EFAULT;
 			goto fail;
 		}
 
-		src_img.user_ptr[0].userptr = userptr;
-		src_img.user_ptr[0].size = size;
+		src_img.user_ptr[0] = (uint64_t)(uintptr_t)userptr;
 		break;
 	case G2D_IMGBUF_COLOR:
 	default:
@@ -592,12 +611,12 @@ static int g2d_blend_test(struct exynos_device *dev,
 	src_img.color = 0xffffffff;
 	ret = g2d_solid_fill(ctx, &src_img, src_x, src_y, img_w, img_h);
 	if (ret < 0)
-		goto err_free_userptr;
+		goto err_free;
 
 	src_img.color = 0x770000ff;
 	ret = g2d_solid_fill(ctx, &src_img, 5, 5, 200, 200);
 	if (ret < 0)
-		goto err_free_userptr;
+		goto err_free;
 
 	dst_img.width = img_w;
 	dst_img.height = img_h;
@@ -608,24 +627,22 @@ static int g2d_blend_test(struct exynos_device *dev,
 	dst_img.color = 0xffffffff;
 	ret = g2d_solid_fill(ctx, &dst_img, dst_x, dst_y, img_w, img_h);
 	if (ret < 0)
-		goto err_free_userptr;
+		goto err_free;
 
 	dst_img.color = 0x77ff0000;
 	ret = g2d_solid_fill(ctx, &dst_img, 105, 105, 200, 200);
 	if (ret < 0)
-		goto err_free_userptr;
+		goto err_free;
 
 	ret = g2d_blend(ctx, &src_img, &dst_img, 5, 5, 105, 105, 200, 200,
 			G2D_OP_OVER);
 	if (ret < 0)
-		goto err_free_userptr;
+		goto err_free;
 
 	g2d_exec(ctx);
 
-err_free_userptr:
-	if (type == G2D_IMGBUF_USERPTR)
-		if (userptr)
-			free((void *)userptr);
+err_free:
+	userptr_free(ctx, userptr);
 
 fail:
 	g2d_fini(ctx);
@@ -643,6 +660,7 @@ static int g2d_checkerboard_test(struct exynos_device *dev,
 	struct g2d_image src_img = {0}, dst_img = {0};
 	unsigned int src_x, src_y, dst_x, dst_y, img_w, img_h;
 	void *checkerboard = NULL;
+	unsigned long size;
 	int ret;
 
 	ctx = g2d_init(dev->fd);
@@ -664,15 +682,20 @@ static int g2d_checkerboard_test(struct exynos_device *dev,
 
 	img_w = screen_width - (screen_width % 32);
 	img_h = screen_height - (screen_height % 32);
+	size = img_w * img_h * 4;
 
 	switch (type) {
 	case G2D_IMGBUF_GEM:
-		memcpy(src->vaddr, checkerboard, img_w * img_h * 4);
+		memcpy(src->vaddr, checkerboard, size);
 		src_img.bo[0] = src->handle;
 		break;
 	case G2D_IMGBUF_USERPTR:
-		src_img.user_ptr[0].userptr = (unsigned long)checkerboard;
-		src_img.user_ptr[0].size = img_w * img_h * 4;
+		if (g2d_userptr_register(ctx, checkerboard, size, G2D_USERPTR_FLAG_RW)) {
+			ret = -EFAULT;
+			goto fail;
+		}
+
+		src_img.user_ptr[0] = (uint64_t)(uintptr_t)checkerboard;
 		break;
 	case G2D_IMGBUF_COLOR:
 	default:
@@ -697,14 +720,18 @@ static int g2d_checkerboard_test(struct exynos_device *dev,
 	src_img.color = 0xff000000;
 	ret = g2d_solid_fill(ctx, &dst_img, src_x, src_y, screen_width, screen_height);
 	if (ret < 0)
-		goto fail;
+		goto err_free;
 
 	ret = g2d_copy(ctx, &src_img, &dst_img, src_x, src_y, dst_x, dst_y,
 			img_w, img_h);
 	if (ret < 0)
-		goto fail;
+		goto err_free;
 
 	g2d_exec(ctx);
+
+err_free:
+	if (type == G2D_IMGBUF_USERPTR)
+		g2d_userptr_unregister(ctx, checkerboard);
 
 fail:
 	free(checkerboard);
