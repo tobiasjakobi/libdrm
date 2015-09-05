@@ -132,6 +132,21 @@ enum e_g2d_buf_type {
 	G2D_IMGBUF_USERPTR,
 };
 
+enum e_g2d_reset_type {
+	/*
+	 * Issues a local reset, i.e. clearing the G2D context
+	 * in userspace. That does not affect the cmdlists that
+	 * were already submitted to the kernel.
+	 */
+	G2D_RESET_LOCAL,
+	/*
+	 * Issues a global reset, i.e. local reset together with
+	 * a reset of the G2D kernel context. This can trigger a
+	 * hardware reset of the G2D engine, if necessary.
+	 */
+	G2D_RESET_GLOBAL,
+};
+
 /*
  * A ROP3 is a boolean operation which has three inputs:
  *   source value, destination value and third operand
@@ -438,6 +453,7 @@ struct g2d_context;
 
 struct g2d_context *g2d_init(int fd);
 void g2d_fini(struct g2d_context *ctx);
+int g2d_reset(struct g2d_context *ctx, enum e_g2d_reset_type type);
 void g2d_config_event(struct g2d_context *ctx, void *userdata);
 int g2d_exec(struct g2d_context *ctx);
 int g2d_solid_fill(struct g2d_context *ctx, struct g2d_image *img,

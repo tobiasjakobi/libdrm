@@ -514,6 +514,49 @@ drm_public void g2d_fini(struct g2d_context *ctx)
 	free(ctx);
 }
 
+/*
+ * g2d_reset - reset fimg2d hardware.
+ *
+ * @ctx: a pointer to g2d_context structure.
+ * @type: type of reset to issue
+ *
+ */
+drm_public int g2d_reset(struct g2d_context *ctx, enum e_g2d_reset_type type)
+{
+	struct drm_exynos_g2d_exec exec = { 0 };
+	int ret;
+
+	switch (type) {
+	case G2D_RESET_LOCAL:
+		ctx->cmd_nr = 0;
+		ctx->cmd_base_nr = 0;
+		ret = 0;
+		break;
+
+	case G2D_RESET_GLOBAL:
+		exec.flags = G2D_EXEC_RESET;
+
+		ret = drmIoctl(ctx->fd, DRM_IOCTL_EXYNOS_G2D_EXEC, &exec);
+		if (ret < 0) {
+			fprintf(stderr, MSG_PREFIX "failed to reset kernel context.\n");
+			ret = -EFAULT;
+		} else {
+			ctx->cmd_nr = 0;
+			ctx->cmd_base_nr = 0;
+			ctx->cmdlist_nr = 0;
+			ret = 0;
+		}
+		break;
+
+	default:
+		fprintf(stderr, MSG_PREFIX "unknown reset type.\n");
+		ret = -EINVAL;
+		break;
+	}
+
+	return ret;
+}
+
 /**
  * g2d_config_event - setup userdata configuration for a g2d event.
  *		The next invocation of a g2d call (e.g. g2d_solid_fill) is
