@@ -330,4 +330,8 @@ int g2d_scale_and_blend(struct g2d_context *ctx, struct g2d_image *src,
 		unsigned int src_w, unsigned int src_h, unsigned int dst_x,
 		unsigned int dst_y, unsigned int dst_w, unsigned int dst_h,
 		enum e_g2d_op op);
+int g2d_userptr_register(struct g2d_context *ctx, void *addr, size_t size,
+	unsigned long flags);
+int g2d_userptr_unregister(struct g2d_context *ctx, void *addr);
+int g2d_userptr_check_idle(struct g2d_context *ctx, void *addr);
 #endif /* _FIMG2D_H_ */

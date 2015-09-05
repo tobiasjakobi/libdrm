@@ -1017,3 +1017,79 @@ g2d_scale_and_blend(struct g2d_context *ctx, struct g2d_image *src,
 
 	return g2d_flush(ctx);
 }
+
+/**
+ * g2d_userptr_register - register an userspace allocated buffer
+ *
+ * @ctx: a pointer to g2d_context structure.
+ * @addr: address of the userspace buffer.
+ * @size: size of the buffer in bytes.
+ * @flags: flags indicating buffer access (read/write).
+ *
+ * Registering a null pointer is silently ignored.
+ */
+drm_public int
+g2d_userptr_register(struct g2d_context *ctx, void *addr, size_t size,
+	unsigned long flags)
+{
+	struct drm_exynos_g2d_userptr_op req = { 0 };
+
+	if (!addr)
+		return 0;
+
+	req.operation = G2D_USERPTR_REGISTER;
+	req.flags = flags;
+	req.user_addr = (uint64_t)(uintptr_t)addr;
+	req.size = size;
+
+	return drmIoctl(ctx->fd, DRM_IOCTL_EXYNOS_G2D_USERPTR, &req);
+}
+
+/**
+ * g2d_userptr_unregister - unregister an userspace allocated buffer
+ *
+ * @ctx: a pointer to g2d_context structure.
+ * @addr: address of the userspace buffer.
+ *
+ * Unregistering a null pointer is silently ignored.
+ */
+drm_public int
+g2d_userptr_unregister(struct g2d_context *ctx, void *addr)
+{
+	struct drm_exynos_g2d_userptr_op req = { 0 };
+
+	if (!addr)
+		return 0;
+
+	req.operation = G2D_USERPTR_UNREGISTER;
+	req.user_addr = (uint64_t)(uintptr_t)addr;
+
+	return drmIoctl(ctx->fd, DRM_IOCTL_EXYNOS_G2D_USERPTR, &req);
+}
+
+/**
+ * g2d_userptr_check_idle - check if an userspace allocated buffer is idle
+ *
+ * @ctx: a pointer to g2d_context structure.
+ * @addr: address of the userspace buffer
+ *
+ * Returns zero (0) if the userptr is currently used by a G2D command
+ * list, and one (1) if it is unused.
+ * A negative value indicates that the userptr was not found.
+ *
+ * Checking a null pointer is silently ignored (the null buffer
+ * is always idle).
+ */
+drm_public int
+g2d_userptr_check_idle(struct g2d_context *ctx, void *addr)
+{
+	struct drm_exynos_g2d_userptr_op req = { 0 };
+
+	if (!addr)
+		return 1;
+
+	req.operation = G2D_USERPTR_CHECK_IDLE;
+	req.user_addr = (uint64_t)(uintptr_t)addr;
+
+	return drmIoctl(ctx->fd, DRM_IOCTL_EXYNOS_G2D_USERPTR, &req);
+}

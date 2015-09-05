@@ -22,3 +22,6 @@ g2d_init
 g2d_move
 g2d_scale_and_blend
 g2d_solid_fill
+g2d_userptr_check_idle
+g2d_userptr_register
+g2d_userptr_unregister
