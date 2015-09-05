@@ -353,7 +353,8 @@ static int g2d_move_test(struct exynos_device *dev,
 	struct g2d_image img = {0}, tmp_img = {0};
 	unsigned int img_w, img_h, count;
 	int cur_x, cur_y;
-	void *checkerboard;
+	void *checkerboard = NULL;
+	unsigned long size;
 	int ret;
 
 	static const struct g2d_step {
@@ -386,15 +387,20 @@ static int g2d_move_test(struct exynos_device *dev,
 
 	img_w = (screen_width / 64) * 32;
 	img_h = (screen_height / 64) * 32;
+	size = img_w * img_h * 4;
 
 	switch (type) {
 	case G2D_IMGBUF_GEM:
-		memcpy(tmp->vaddr, checkerboard, img_w * img_h * 4);
+		memcpy(tmp->vaddr, checkerboard, size);
 		tmp_img.bo[0] = tmp->handle;
 		break;
 	case G2D_IMGBUF_USERPTR:
-		tmp_img.user_ptr[0].userptr = (unsigned long)checkerboard;
-		tmp_img.user_ptr[0].size = img_w * img_h * 4;
+		if (g2d_userptr_register(ctx, checkerboard, size, G2D_USERPTR_FLAG_RW)) {
+			ret = -EFAULT;
+			goto fail;
+		}
+
+		tmp_img.user_ptr[0] = (uint64_t)(uintptr_t)checkerboard;
 		break;
 	case G2D_IMGBUF_COLOR:
 	default:
@@ -425,7 +431,7 @@ static int g2d_move_test(struct exynos_device *dev,
 	if (!ret)
 		ret = g2d_exec(ctx);
 	if (ret < 0)
-			goto fail;
+		goto err_free;
 
 	printf("move test with %s.\n",
 			type == G2D_IMGBUF_GEM ? "gem" : "userptr");
@@ -452,7 +458,7 @@ static int g2d_move_test(struct exynos_device *dev,
 			ret = g2d_exec(ctx);
 
 		if (ret < 0)
-			goto fail;
+			goto err_free;
 
 		cur_x += s->x;
 		cur_y += s->y;
@@ -460,10 +466,13 @@ static int g2d_move_test(struct exynos_device *dev,
 		usleep(100000);
 	}
 
+err_free:
+	if (type == G2D_IMGBUF_USERPTR)
+		g2d_userptr_unregister(ctx, checkerboard);
+	free(checkerboard);
+
 fail:
 	g2d_fini(ctx);
-
-	free(checkerboard);
 
 	return ret;
 }
