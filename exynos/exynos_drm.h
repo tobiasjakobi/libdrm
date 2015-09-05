@@ -138,11 +138,6 @@ enum drm_exynos_g2d_event_type {
 	G2D_EVENT_STOP,		/* not yet */
 };
 
-struct drm_exynos_g2d_userptr {
-	unsigned long userptr;
-	unsigned long size;
-};
-
 /**
  * A structure for issuing userptr operations.
  *
