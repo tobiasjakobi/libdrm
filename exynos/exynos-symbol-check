@@ -33,6 +33,18 @@ g2d_init
 g2d_move
 g2d_scale_and_blend
 g2d_solid_fill
+ipp_init
+ipp_fini
+ipp_num_modules
+ipp_get_module
+ipp_task_create
+ipp_task_destroy
+ipp_task_config_src
+ipp_task_config_dst
+ipp_task_config_transf
+ipp_task_config_alpha
+ipp_check
+ipp_commit
 EOF
 done)
 
