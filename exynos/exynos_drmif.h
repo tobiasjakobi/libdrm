@@ -58,7 +58,7 @@ struct exynos_bo {
 	uint32_t		name;
 };
 
-#define EXYNOS_EVENT_CONTEXT_VERSION 1
+#define EXYNOS_EVENT_CONTEXT_VERSION 2
 
 /*
  * Exynos Event Context structure.
@@ -66,6 +66,7 @@ struct exynos_bo {
  * @base: base context (for core events).
  * @version: version info similar to the one in 'drmEventContext'.
  * @g2d_event_handler: handler for G2D events.
+ * @ipp_event_handler: handler for IPP events.
  */
 struct exynos_event_context {
 	drmEventContext base;
@@ -75,6 +76,9 @@ struct exynos_event_context {
 	void (*g2d_event_handler)(int fd, unsigned int cmdlist_no,
 							  unsigned int tv_sec, unsigned int tv_usec,
 							  void *user_data);
+	void (*ipp_event_handler)(int fd, unsigned int ipp_id,
+							  unsigned int sequence, unsigned int tv_sec,
+							  unsigned int tv_usec, void *user_data);
 };
 
 /*

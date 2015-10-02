@@ -382,6 +382,7 @@ static void
 exynos_handle_vendor(int fd, struct drm_event *e, void *ctx)
 {
 	struct drm_exynos_g2d_event *g2d;
+	struct drm_exynos_ipp_event *ipp;
 	struct exynos_event_context *ectx = ctx;
 
 	switch (e->type) {
@@ -392,6 +393,14 @@ exynos_handle_vendor(int fd, struct drm_event *e, void *ctx)
 			ectx->g2d_event_handler(fd, g2d->cmdlist_no, g2d->tv_sec,
 						g2d->tv_usec, U642VOID(g2d->user_data));
 			break;
+
+		case DRM_EXYNOS_IPP_EVENT:
+			if (ectx->version < 2 || ectx->ipp_event_handler == NULL)
+				break;
+			ipp = (struct drm_exynos_ipp_event *)e;
+			ectx->ipp_event_handler(fd, ipp->ipp_id, ipp->sequence,
+						ipp->tv_sec, ipp->tv_usec,
+						U642VOID(ipp->user_data));
 
 		default:
 			break;
