@@ -355,7 +355,7 @@ static int g2d_flush(struct g2d_context *ctx)
 /**
  * g2d_init - create a new g2d context and get hardware version.
  *
- * fd: a file descriptor to an opened drm device.
+ * @fd: a file descriptor to an opened drm device.
  */
 drm_public struct g2d_context *g2d_init(int fd)
 {
