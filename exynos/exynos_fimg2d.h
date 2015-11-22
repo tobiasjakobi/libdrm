@@ -133,6 +133,10 @@ enum e_g2d_buf_type {
 	G2D_IMGBUF_USERPTR,
 };
 
+enum e_g2d_exec_flag {
+	G2D_EXEC_FLAG_ASYNC		= (1 << 0),
+};
+
 enum e_g2d_reset_type {
 	/*
 	 * Issues a local reset, i.e. clearing the G2D context
@@ -472,6 +476,7 @@ void g2d_fini(struct g2d_context *ctx);
 int g2d_reset(struct g2d_context *ctx, enum e_g2d_reset_type type);
 void g2d_config_event(struct g2d_context *ctx, void *userdata);
 int g2d_exec(struct g2d_context *ctx);
+int g2d_exec2(struct g2d_context *ctx, unsigned int flags);
 int g2d_solid_fill(struct g2d_context *ctx, struct g2d_image *img,
 			unsigned int x, unsigned int y, unsigned int w,
 			unsigned int h);

@@ -729,6 +729,38 @@ drm_public int g2d_exec(struct g2d_context *ctx)
 }
 
 /**
+ * g2d_exec2 - instruct the kernel driver to execute the command buffers
+ *             which were submitted via g2d_flush().
+ *
+ * @ctx: a pointer to g2d_context structure.
+ * @flags: execution flags as indicated in the e_g2d_exec_flag enumerator.
+ */
+drm_public int g2d_exec2(struct g2d_context *ctx, unsigned int flags)
+{
+	struct drm_exynos_g2d_exec exec = { 0 };
+	int ret;
+
+	if (ctx->cmdlist_nr == 0)
+		return -EINVAL;
+
+	if (flags & ~G2D_EXEC_FLAG_ASYNC)
+		return -EINVAL;
+
+	if (flags & G2D_EXEC_FLAG_ASYNC)
+		exec.flags |= G2D_EXEC_ASYNC;
+
+	ret = drmIoctl(ctx->fd, DRM_IOCTL_EXYNOS_G2D_EXEC, &exec);
+	if (ret < 0) {
+		fprintf(stderr, MSG_PREFIX "failed to execute.\n");
+		return ret;
+	}
+
+	ctx->cmdlist_nr = 0;
+
+	return ret;
+}
+
+/**
  * g2d_solid_fill - fill given buffer with given color data.
  *
  * @ctx: a pointer to g2d_context structure.
