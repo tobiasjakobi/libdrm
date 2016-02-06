@@ -112,10 +112,36 @@ enum e_g2d_buf_type {
 	G2D_IMGBUF_USERPTR,
 };
 
+/*
+ * A ROP3 is a boolean operation which has three inputs:
+ *   source value, destination value and third operand
+ *
+ * The operation works like this:
+ * | output | source |  dest  | third  |
+ * |  rop0  |   0    |   0    |   0    |
+ * |  rop1  |   0    |   1    |   0    |
+ * |  rop2  |   1    |   0    |   0    |
+ * |  rop3  |   1    |   1    |   0    |
+ * |  rop4  |   0    |   0    |   1    |
+ * |  rop5  |   0    |   1    |   1    |
+ * |  rop6  |   1    |   0    |   1    |
+ * |  rop7  |   1    |   1    |   1    |
+ *
+ * rop{0..7} are specified by the ROP3 value.
+ */
 enum e_g2d_rop3_type {
 	G2D_ROP3_DST = 0xAA,
 	G2D_ROP3_SRC = 0xCC,
 	G2D_ROP3_3RD = 0xF0,
+
+	/* Bitwise AND and OR of source and destination. */
+	G2D_ROP3_SRC_AND_DST = 0x88,
+	G2D_ROP3_SRC_OR_DST = 0xEE,
+
+	/* Bitwise invert of source and destination. */
+	G2D_ROP3_INVERT_SRC = 0x33,
+	G2D_ROP3_INVERT_DST = 0x55,
+
 	G2D_ROP3_MASK = 0xFF,
 };
 
