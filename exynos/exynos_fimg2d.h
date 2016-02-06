@@ -119,6 +119,12 @@ enum e_g2d_rop3_type {
 	G2D_ROP3_MASK = 0xFF,
 };
 
+/*
+ * The default for ROP is to only take the RGB part
+ * into consideration and ignore the alpha value.
+ * G2D_SELECT_ROP_FOR_ALPHA_BLEND also applies the
+ * ROP to alpha.
+ */
 enum e_g2d_select_alpha_src {
 	G2D_SELECT_SRC_FOR_ALPHA_BLEND,	/* VER4.1 */
 	G2D_SELECT_ROP_FOR_ALPHA_BLEND,	/* VER4.1 */
