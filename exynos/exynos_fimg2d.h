@@ -124,6 +124,12 @@ enum e_g2d_select_alpha_src {
 	G2D_SELECT_ROP_FOR_ALPHA_BLEND,	/* VER4.1 */
 };
 
+enum e_g2d_third_op_select {
+	G2D_THIRD_OP_SELECT_PATTERN,
+	G2D_THIRD_OP_SELECT_FG_COLOR,
+	G2D_THIRD_OP_SELECT_BG_COLOR,
+};
+
 enum e_g2d_transparent_mode {
 	G2D_TRANSPARENT_MODE_OPAQUE,
 	G2D_TRANSPARENT_MODE_TRANSPARENT,
@@ -212,6 +218,21 @@ union g2d_point_val {
 		 * In YCbCr 420 format with even number.
 		 */
 		unsigned int y:16;
+	} data;
+};
+
+/*
+ * The unmasked_select field applies to g2d_rop4_val's unmasked_rop3
+ * field. The masked_select field to masked_rop3 (ignored if no
+ * masking is used.
+ */
+union g2d_third_op_val {
+	unsigned int val;
+	struct {
+		enum e_g2d_third_op_select	unmasked_select:2;
+		unsigned int			reserved1:2;
+		enum e_g2d_third_op_select	masked_select:2;
+		unsigned int			reserved2:26;
 	} data;
 };
 
