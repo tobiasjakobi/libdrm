@@ -365,6 +365,11 @@ int g2d_copy(struct g2d_context *ctx, struct g2d_image *src,
 		struct g2d_image *dst, unsigned int src_x,
 		unsigned int src_y, unsigned int dst_x, unsigned int dst_y,
 		unsigned int w, unsigned int h);
+int g2d_copy_rop(struct g2d_context *ctx, struct g2d_image *src,
+		struct g2d_image *dst, unsigned int src_x, unsigned int src_y,
+		unsigned int dst_x, unsigned dst_y, unsigned int w,
+		unsigned int h, union g2d_rop4_val rop4,
+		unsigned int use_third_reg);
 int g2d_move(struct g2d_context *ctx, struct g2d_image *img,
 		unsigned int src_x, unsigned int src_y, unsigned int dst_x,
 		unsigned dst_y, unsigned int w, unsigned int h);

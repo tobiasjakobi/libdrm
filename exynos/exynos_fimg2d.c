@@ -571,6 +571,132 @@ g2d_copy(struct g2d_context *ctx, struct g2d_image *src,
 }
 
 /**
+ * g2d_copy_rop - copy contents from source buffer to destination buffer
+ *		while applying a raster operaton (ROP4).
+ *
+ * @ctx: a pointer to g2d_context structure.
+ * @src: a pointer to g2d_image structure including image and buffer
+ *	information to source.
+ * @dst: a pointer to g2d_image structure including image and buffer
+ *	information to destination.
+ * @src_x: x start position to source buffer.
+ * @src_y: y start position to source buffer.
+ * @dst_x: x start position to destination buffer.
+ * @dst_y: y start position to destination buffer.
+ * @w: width value to source and destination buffers.
+ * @h: height value to source and destination buffers.
+ * @rop4: raster operation definition.
+ * @use_third_op: setup the third operand register to use the
+ *	color of the source image.
+ */
+drm_public int
+g2d_copy_rop(struct g2d_context *ctx, struct g2d_image *src,
+		struct g2d_image *dst, unsigned int src_x, unsigned int src_y,
+		unsigned int dst_x, unsigned dst_y, unsigned int w,
+		unsigned int h, union g2d_rop4_val rop4,
+		unsigned int use_third_op)
+{
+	union g2d_point_val pt;
+	unsigned int src_w, src_h, dst_w, dst_h;
+
+	union g2d_bitblt_cmd_val bitblt_cmd;
+
+	src_w = w;
+	src_h = h;
+	if (src_x + src->width > w)
+		src_w = src->width - src_x;
+	if (src_y + src->height > h)
+		src_h = src->height - src_y;
+
+	dst_w = w;
+	dst_h = w;
+	if (dst_x + dst->width > w)
+		dst_w = dst->width - dst_x;
+	if (dst_y + dst->height > h)
+		dst_h = dst->height - dst_y;
+
+	w = MIN(src_w, dst_w);
+	h = MIN(src_h, dst_h);
+
+	if (w <= 0 || h <= 0) {
+		fprintf(stderr, MSG_PREFIX "invalid width or height.\n");
+		return -EINVAL;
+	}
+
+	/* Validate ROP4: */
+	if (rop4.val & 0xffff0000) {
+		fprintf(stderr, MSG_PREFIX "invalid ROP4 value.\n");
+		return -EINVAL;
+	}
+
+	/*
+	 * The masked ROP needs correctly configured mask
+	 * registers, otherwise the G2D engine crashes.
+	 */
+	if (rop4.data.masked_rop3 != 0) {
+		fprintf(stderr, MSG_PREFIX "masked ROP not implemented yet.\n");
+		return -EINVAL;
+	}
+
+	if (g2d_check_space(ctx, 12 + (use_third_op ? 2 : 0), 2))
+		return -ENOSPC;
+
+	g2d_add_cmd(ctx, DST_SELECT_REG, G2D_SELECT_MODE_NORMAL);
+	g2d_add_cmd(ctx, DST_COLOR_MODE_REG, dst->color_mode);
+	g2d_add_base_addr(ctx, dst, g2d_dst);
+	g2d_add_cmd(ctx, DST_STRIDE_REG, dst->stride);
+
+	g2d_add_cmd(ctx, SRC_SELECT_REG, G2D_SELECT_MODE_NORMAL);
+	g2d_add_cmd(ctx, SRC_COLOR_MODE_REG, src->color_mode);
+	g2d_add_base_addr(ctx, src, g2d_src);
+	g2d_add_cmd(ctx, SRC_STRIDE_REG, src->stride);
+
+	pt.data.x = src_x;
+	pt.data.y = src_y;
+	g2d_add_cmd(ctx, SRC_LEFT_TOP_REG, pt.val);
+	pt.data.x = src_x + w;
+	pt.data.y = src_y + h;
+	g2d_add_cmd(ctx, SRC_RIGHT_BOTTOM_REG, pt.val);
+
+	pt.data.x = dst_x;
+	pt.data.y = dst_y;
+	g2d_add_cmd(ctx, DST_LEFT_TOP_REG, pt.val);
+	pt.data.x = dst_x + w;
+	pt.data.y = dst_y + h;
+	g2d_add_cmd(ctx, DST_RIGHT_BOTTOM_REG, pt.val);
+
+	/*
+	 * When using the third operand register, configure it to use
+	 * the color from the foreground color register.
+	 * The fg color is set from the color of the source G2D image.
+	 */
+	if (use_third_op) {
+		union g2d_third_op_val third_op;
+
+		third_op.val = 0;
+		third_op.data.unmasked_select = G2D_THIRD_OP_SELECT_FG_COLOR;
+
+		g2d_add_cmd(ctx, FG_COLOR_REG, src->color);
+		g2d_add_cmd(ctx, THIRD_OPERAND_REG, third_op.val);
+	}
+
+	g2d_add_cmd(ctx, ROP4_REG, rop4.val);
+
+	/*
+	 * The raster operation can either apply to the alpha channel as
+	 * well, or simply copy it from the source. Use the component_alpha
+	 * flag from the source G2D image to select the mode.
+	 */
+	bitblt_cmd.val = 0;
+	bitblt_cmd.data.rop4_alpha_en = src->component_alpha ?
+		G2D_SELECT_ROP_FOR_ALPHA_BLEND : G2D_SELECT_SRC_FOR_ALPHA_BLEND;
+
+	g2d_add_cmd(ctx, BITBLT_COMMAND_REG, bitblt_cmd.val);
+
+	return g2d_flush(ctx);
+}
+
+/**
  * g2d_move - copy content inside single buffer.
  *	Similar to libc's memmove() this copies a rectangular
  *	region of the provided buffer to another location, while

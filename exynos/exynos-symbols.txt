@@ -14,6 +14,7 @@ exynos_vidi_connection
 exynos_handle_event
 g2d_blend
 g2d_copy
+g2d_copy_rop
 g2d_copy_with_scale
 g2d_exec
 g2d_config_event
