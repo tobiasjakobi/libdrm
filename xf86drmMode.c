@@ -1222,6 +1222,18 @@ struct _drmModeAtomicReq {
 	uint32_t cursor;
 	uint32_t size_items;
 	drmModeAtomicReqItemPtr items;
+
+	uint32_t *objs_cache;
+	uint32_t *count_props_cache;
+	uint32_t *props_cache;
+	uint64_t *prop_values_cache;
+
+	uint32_t count_cache;
+	uint32_t size_cache[2];
+
+	/* flags */
+	uint32_t dirty:1;
+	uint32_t padding:31;
 };
 
 drm_public drmModeAtomicReqPtr drmModeAtomicAlloc(void)
@@ -1232,9 +1244,7 @@ drm_public drmModeAtomicReqPtr drmModeAtomicAlloc(void)
 	if (!req)
 		return NULL;
 
-	req->items = NULL;
-	req->cursor = 0;
-	req->size_items = 0;
+	req->dirty = 1;
 
 	return req;
 }
@@ -1260,10 +1270,10 @@ drm_public drmModeAtomicReqPtr drmModeAtomicDuplicate(drmModeAtomicReqPtr old)
 			return NULL;
 		}
 		memcpy(new->items, old->items,
-		       old->cursor * sizeof(*new->items));
-	} else {
-		new->items = NULL;
+		       old->size_items * sizeof(*new->items));
 	}
+
+	new->dirty = 1;
 
 	return new;
 }
@@ -1294,6 +1304,8 @@ drm_public int drmModeAtomicMerge(drmModeAtomicReqPtr base,
 	memcpy(&base->items[base->cursor], augment->items,
 	       augment->cursor * sizeof(*augment->items));
 	base->cursor += augment->cursor;
+
+	base->dirty = 1;
 
 	return 0;
 }
@@ -1339,6 +1351,7 @@ drm_public int drmModeAtomicAddProperty(drmModeAtomicReqPtr req,
 	req->items[req->cursor].property_id = property_id;
 	req->items[req->cursor].value = value;
 	req->cursor++;
+	req->dirty = 1;
 
 	return req->cursor;
 }
@@ -1348,8 +1361,13 @@ drm_public void drmModeAtomicFree(drmModeAtomicReqPtr req)
 	if (!req)
 		return;
 
-	if (req->items)
-		drmFree(req->items);
+	drmFree(req->items);
+
+	free(req->objs_cache);
+	free(req->count_props_cache);
+	free(req->props_cache);
+	free(req->prop_values_cache);
+
 	drmFree(req);
 }
 
@@ -1366,31 +1384,19 @@ static int sort_req_list(const void *misc, const void *other)
 		return second->property_id - first->property_id;
 }
 
-drm_public int drmModeAtomicCommit(int fd, drmModeAtomicReqPtr req,
-                                   uint32_t flags, void *user_data)
+static int update_cache(drmModeAtomicReqPtr req)
 {
 	drmModeAtomicReqPtr sorted;
-	struct drm_mode_atomic atomic;
-	uint32_t *objs_ptr = NULL;
-	uint32_t *count_props_ptr = NULL;
-	uint32_t *props_ptr = NULL;
-	uint64_t *prop_values_ptr = NULL;
-	uint32_t last_obj_id = 0;
-	uint32_t i;
-	int obj_idx = -1;
 	int ret = -1;
 
-	if (!req)
-		return -EINVAL;
-
-	if (req->cursor == 0)
-		return 0;
+	uint32_t last_obj_id = 0;
+	int obj_idx = -1;
+	uint32_t count_objs = 0;
+	uint32_t i;
 
 	sorted = drmModeAtomicDuplicate(req);
 	if (sorted == NULL)
 		return -ENOMEM;
-
-	memclear(atomic);
 
 	/* Sort the list by object ID, then by property ID. */
 	qsort(sorted->items, sorted->cursor, sizeof(*sorted->items),
@@ -1399,7 +1405,7 @@ drm_public int drmModeAtomicCommit(int fd, drmModeAtomicReqPtr req,
 	/* Now the list is sorted, eliminate duplicate property sets. */
 	for (i = 0; i < sorted->cursor; i++) {
 		if (sorted->items[i].object_id != last_obj_id) {
-			atomic.count_objs++;
+			count_objs++;
 			last_obj_id = sorted->items[i].object_id;
 		}
 
@@ -1415,60 +1421,92 @@ drm_public int drmModeAtomicCommit(int fd, drmModeAtomicReqPtr req,
 		sorted->cursor--;
 	}
 
-	objs_ptr = drmMalloc(atomic.count_objs * sizeof objs_ptr[0]);
-	if (!objs_ptr) {
-		errno = ENOMEM;
-		goto out;
+	/* Increase the cache buffer if necessary. */
+	if (count_objs > req->size_cache[0]) {
+		free(req->objs_cache);
+		free(req->count_props_cache);
+
+		req->objs_cache = malloc(count_objs * sizeof(uint32_t));
+		req->count_props_cache = malloc(count_objs * sizeof(uint32_t));
+
+		if (!req->objs_cache || !req->count_props_cache) {
+			req->size_cache[0] = 0;
+			errno = ENOMEM;
+			goto fail;
+		}
+
+		req->size_cache[0] = count_objs;
 	}
 
-	count_props_ptr = drmMalloc(atomic.count_objs * sizeof count_props_ptr[0]);
-	if (!count_props_ptr) {
-		errno = ENOMEM;
-		goto out;
-	}
+	if (sorted->cursor > req->size_cache[1]) {
+		free(req->props_cache);
+		free(req->prop_values_cache);
 
-	props_ptr = drmMalloc(sorted->cursor * sizeof props_ptr[0]);
-	if (!props_ptr) {
-		errno = ENOMEM;
-		goto out;
-	}
+		req->props_cache = malloc(sorted->cursor * sizeof(uint32_t));
+		req->prop_values_cache = malloc(sorted->cursor * sizeof(uint64_t));
 
-	prop_values_ptr = drmMalloc(sorted->cursor * sizeof prop_values_ptr[0]);
-	if (!prop_values_ptr) {
-		errno = ENOMEM;
-		goto out;
+		if (!req->props_cache || !req->prop_values_cache) {
+			req->size_cache[1] = 0;
+			errno = ENOMEM;
+			goto fail;
+		}
+
+		req->size_cache[1] = sorted->cursor;
 	}
 
 	for (i = 0, last_obj_id = 0; i < sorted->cursor; i++) {
 		if (sorted->items[i].object_id != last_obj_id) {
 			obj_idx++;
-			objs_ptr[obj_idx] = sorted->items[i].object_id;
-			last_obj_id = objs_ptr[obj_idx];
+			req->objs_cache[obj_idx] = sorted->items[i].object_id;
+			req->count_props_cache[obj_idx] = 0;
+			last_obj_id = req->objs_cache[obj_idx];
 		}
 
-		count_props_ptr[obj_idx]++;
-		props_ptr[i] = sorted->items[i].property_id;
-		prop_values_ptr[i] = sorted->items[i].value;
-
+		req->count_props_cache[obj_idx]++;
+		req->props_cache[i] = sorted->items[i].property_id;
+		req->prop_values_cache[i] = sorted->items[i].value;
 	}
 
-	atomic.flags = flags;
-	atomic.objs_ptr = VOID2U64(objs_ptr);
-	atomic.count_props_ptr = VOID2U64(count_props_ptr);
-	atomic.props_ptr = VOID2U64(props_ptr);
-	atomic.prop_values_ptr = VOID2U64(prop_values_ptr);
-	atomic.user_data = VOID2U64(user_data);
+	req->count_cache = count_objs;
+	req->dirty = 0;
 
-	ret = DRM_IOCTL(fd, DRM_IOCTL_MODE_ATOMIC, &atomic);
+	ret = 0;
+
+fail:
+	drmModeAtomicFree(sorted);
+	return ret;
+}
+
+drm_public int
+drmModeAtomicCommit(int fd, drmModeAtomicReqPtr req, uint32_t flags,
+			void *user_data)
+{
+	struct drm_mode_atomic atomic;
+
+	if (!req)
+		return -EINVAL;
+
+	if (req->cursor == 0)
+		return 0;
+
+	if (req->dirty == 0)
+		goto out;
+
+	if (update_cache(req))
+		return -1;
 
 out:
-	drmFree(objs_ptr);
-	drmFree(count_props_ptr);
-	drmFree(props_ptr);
-	drmFree(prop_values_ptr);
-	drmModeAtomicFree(sorted);
+	memclear(atomic);
 
-	return ret;
+	atomic.flags = flags;
+	atomic.count_objs = req->count_cache;
+	atomic.objs_ptr = VOID2U64(req->objs_cache);
+	atomic.count_props_ptr = VOID2U64(req->count_props_cache);
+	atomic.props_ptr = VOID2U64(req->props_cache);
+	atomic.prop_values_ptr = VOID2U64(req->prop_values_cache);
+	atomic.user_data = VOID2U64(user_data);
+
+	return DRM_IOCTL(fd, DRM_IOCTL_MODE_ATOMIC, &atomic);
 }
 
 drm_public int
