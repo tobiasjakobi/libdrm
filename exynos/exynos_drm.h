@@ -123,11 +123,6 @@ struct drm_exynos_g2d_get_ver2 {
 	__u32	caps;
 };
 
-struct drm_exynos_g2d_cmd {
-	__u32	offset;
-	__u32	data;
-};
-
 enum drm_exynos_g2d_buf_type {
 	G2D_BUF_USERPTR = 1 << 31,
 };

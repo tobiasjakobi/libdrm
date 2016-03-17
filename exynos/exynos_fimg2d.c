@@ -57,6 +57,11 @@
 #define G2D_MAX_GEM_CMD_NR	64
 #define G2D_MAX_CMD_LIST_NR	64
 
+struct drm_exynos_g2d_cmd {
+	__u32	offset;
+	__u32	data;
+};
+
 struct g2d_context {
 	int				fd;
 	unsigned int			major;
