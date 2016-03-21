@@ -464,7 +464,7 @@ g2d_solid_fill(struct g2d_context *ctx, struct g2d_image *img,
 	union g2d_bitblt_cmd_val bitblt;
 	union g2d_point_val pt;
 
-	if (g2d_check_space(ctx, 7, 1))
+	if (g2d_check_space(ctx, 8, 1))
 		return -ENOSPC;
 
 	g2d_add_cmd(ctx, DST_SELECT_REG, G2D_SELECT_MODE_NORMAL);
@@ -490,6 +490,8 @@ g2d_solid_fill(struct g2d_context *ctx, struct g2d_image *img,
 	bitblt.val = 0;
 	bitblt.data.fast_solid_color_fill_en = 1;
 	g2d_add_cmd(ctx, BITBLT_COMMAND_REG, bitblt.val);
+
+	g2d_add_cmd(ctx, BITBLT_START_REG, G2D_START_BITBLT);
 
 	return g2d_flush(ctx);
 }
@@ -541,7 +543,7 @@ g2d_copy(struct g2d_context *ctx, struct g2d_image *src,
 		return -EINVAL;
 	}
 
-	if (g2d_check_space(ctx, 11, 2))
+	if (g2d_check_space(ctx, 12, 2))
 		return -ENOSPC;
 
 	g2d_add_cmd(ctx, DST_SELECT_REG, G2D_SELECT_MODE_BGCOLOR);
@@ -571,6 +573,8 @@ g2d_copy(struct g2d_context *ctx, struct g2d_image *src,
 	rop4.val = 0;
 	rop4.data.unmasked_rop3 = G2D_ROP3_SRC;
 	g2d_add_cmd(ctx, ROP4_REG, rop4.val);
+
+	g2d_add_cmd(ctx, BITBLT_START_REG, G2D_START_BITBLT);
 
 	return g2d_flush(ctx);
 }
@@ -643,7 +647,7 @@ g2d_copy_rop(struct g2d_context *ctx, struct g2d_image *src,
 		return -EINVAL;
 	}
 
-	if (g2d_check_space(ctx, 12 + (use_third_op ? 2 : 0), 2))
+	if (g2d_check_space(ctx, 13 + (use_third_op ? 2 : 0), 2))
 		return -ENOSPC;
 
 	g2d_add_cmd(ctx, DST_SELECT_REG, G2D_SELECT_MODE_NORMAL);
@@ -698,6 +702,8 @@ g2d_copy_rop(struct g2d_context *ctx, struct g2d_image *src,
 
 	g2d_add_cmd(ctx, BITBLT_COMMAND_REG, bitblt_cmd.val);
 
+	g2d_add_cmd(ctx, BITBLT_START_REG, G2D_START_BITBLT);
+
 	return g2d_flush(ctx);
 }
 
@@ -751,7 +757,7 @@ g2d_move(struct g2d_context *ctx, struct g2d_image *img,
 		return -EINVAL;
 	}
 
-	if (g2d_check_space(ctx, 13, 2))
+	if (g2d_check_space(ctx, 14, 2))
 		return -ENOSPC;
 
 	g2d_add_cmd(ctx, DST_SELECT_REG, G2D_SELECT_MODE_BGCOLOR);
@@ -792,6 +798,8 @@ g2d_move(struct g2d_context *ctx, struct g2d_image *img,
 	rop4.val = 0;
 	rop4.data.unmasked_rop3 = G2D_ROP3_SRC;
 	g2d_add_cmd(ctx, ROP4_REG, rop4.val);
+
+	g2d_add_cmd(ctx, BITBLT_START_REG, G2D_START_BITBLT);
 
 	return g2d_flush(ctx);
 }
@@ -858,7 +866,7 @@ g2d_copy_with_scale(struct g2d_context *ctx, struct g2d_image *src,
 		return -EINVAL;
 	}
 
-	if (g2d_check_space(ctx, 12 + scale * 3 + negative + repeat_pad, 2))
+	if (g2d_check_space(ctx, 13 + scale * 3 + negative + repeat_pad, 2))
 		return -ENOSPC;
 
 	g2d_add_cmd(ctx, DST_SELECT_REG, G2D_SELECT_MODE_BGCOLOR);
@@ -905,6 +913,8 @@ g2d_copy_with_scale(struct g2d_context *ctx, struct g2d_image *src,
 	pt.data.x = dst_x + dst_w;
 	pt.data.y = dst_y + dst_h;
 	g2d_add_cmd(ctx, DST_RIGHT_BOTTOM_REG, pt.val);
+
+	g2d_add_cmd(ctx, BITBLT_START_REG, G2D_START_BITBLT);
 
 	return g2d_flush(ctx);
 }
@@ -971,7 +981,7 @@ g2d_blend(struct g2d_context *ctx, struct g2d_image *src,
 
 	gem_space = src->select_mode == G2D_SELECT_MODE_NORMAL ? 2 : 1;
 
-	if (g2d_check_space(ctx, 12, gem_space))
+	if (g2d_check_space(ctx, 13, gem_space))
 		return -ENOSPC;
 
 	bitblt.val = 0;
@@ -1020,6 +1030,8 @@ g2d_blend(struct g2d_context *ctx, struct g2d_image *src,
 	pt.data.x = dst_x + w;
 	pt.data.y = dst_y + h;
 	g2d_add_cmd(ctx, DST_RIGHT_BOTTOM_REG, pt.val);
+
+	g2d_add_cmd(ctx, BITBLT_START_REG, G2D_START_BITBLT);
 
 	return g2d_flush(ctx);
 }
@@ -1090,7 +1102,7 @@ g2d_scale_and_blend(struct g2d_context *ctx, struct g2d_image *src,
 
 	gem_space = src->select_mode == G2D_SELECT_MODE_NORMAL ? 2 : 1;
 
-	if (g2d_check_space(ctx, 12 + scale * 3, gem_space))
+	if (g2d_check_space(ctx, 13 + scale * 3, gem_space))
 		return -ENOSPC;
 
 	bitblt.val = 0;
@@ -1145,6 +1157,8 @@ g2d_scale_and_blend(struct g2d_context *ctx, struct g2d_image *src,
 	pt.data.x = dst_x + dst_w;
 	pt.data.y = dst_y + dst_h;
 	g2d_add_cmd(ctx, DST_RIGHT_BOTTOM_REG, pt.val);
+
+	g2d_add_cmd(ctx, BITBLT_START_REG, G2D_START_BITBLT);
 
 	return g2d_flush(ctx);
 }
