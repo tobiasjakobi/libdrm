@@ -235,6 +235,12 @@ enum e_g2d_acoeff_mode {
 	G2D_ACOEFF_MODE_MASK
 };
 
+enum e_g2d_bitblt_mode {
+	G2D_START_BITBLT	= (1 << 0),
+	G2D_START_N_HOLD	= (1 << 1),
+	G2D_START_CASESEL	= (1 << 2)
+};
+
 union g2d_point_val {
 	unsigned int val;
 	struct {
