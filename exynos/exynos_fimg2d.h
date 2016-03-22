@@ -241,6 +241,32 @@ enum e_g2d_bitblt_mode {
 	G2D_START_CASESEL	= (1 << 2)
 };
 
+/**
+ * @BLEND_ROUND_0: OUT = (A+1)*B) >> 8
+ * @BLEND_ROUND_1: OUT = (A+(A>>7))* B) >> 8
+ * @BLEND_ROUND_2: TMP = A*8 + 0x80, OUT = (TMP + (TMP >> 8)) >> 8
+ * @BLEND_ROUND_3: TMP = (A*B + C*D + 0x80), OUT = (TMP + (TMP >> 8)) >> 8
+ */
+enum e_g2d_blend_round_mode {
+	G2D_BLEND_ROUND_0,
+	G2D_BLEND_ROUND_1,
+	G2D_BLEND_ROUND_2,
+	G2D_BLEND_ROUND_3  /* initial value */
+};
+
+/**
+ * @PREMULT_ROUND_0: OUT = (A*B) >> 8
+ * @PREMULT_ROUND_1: OUT = (A+1)*B) >> 8
+ * @PREMULT_ROUND_2: OUT = (A+(A>>7))* B) >> 8
+ * @PREMULT_ROUND_3: TMP = A*8 + 0x80, OUT = (TMP + (TMP >> 8)) >> 8
+ */
+enum e_g2d_premult_round_mode {
+	G2D_PREMULT_ROUND_0,
+	G2D_PREMULT_ROUND_1,
+	G2D_PREMULT_ROUND_2,
+	G2D_PREMULT_ROUND_3  /* initial value */
+};
+
 union g2d_point_val {
 	unsigned int val;
 	struct {
@@ -271,6 +297,16 @@ union g2d_third_op_val {
 		unsigned int			reserved1:2;
 		enum e_g2d_third_op_select	masked_select:2;
 		unsigned int			reserved2:26;
+	} data;
+};
+
+union g2d_round_mode {
+	unsigned int val;
+	struct {
+		enum e_g2d_blend_round_mode		blend_round:2;
+		unsigned int				reserved1:2;
+		enum e_g2d_premult_round_mode		premult_round:2;
+		unsigned int				reserved2:26;
 	} data;
 };
 
