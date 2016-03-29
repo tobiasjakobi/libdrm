@@ -96,6 +96,17 @@ struct drm_exynos_g2d_get_ver {
 	__u32	minor;
 };
 
+enum drm_exynos_g2d_caps {
+	G2D_CAP_USERPTR = (1 << 0),
+	G2D_CAP_CMDLIST2 = (1 << 1),
+};
+
+struct drm_exynos_g2d_get_ver2 {
+	__u32	major;
+	__u32	minor;
+	__u32	caps;
+};
+
 struct drm_exynos_g2d_cmd {
 	__u32	offset;
 	__u32	data;
@@ -140,6 +151,7 @@ struct drm_exynos_g2d_exec {
 #define DRM_EXYNOS_G2D_GET_VER		0x20
 #define DRM_EXYNOS_G2D_SET_CMDLIST	0x21
 #define DRM_EXYNOS_G2D_EXEC		0x22
+#define DRM_EXYNOS_G2D_GET_VER2		0x23
 
 #define DRM_IOCTL_EXYNOS_GEM_CREATE		DRM_IOWR(DRM_COMMAND_BASE + \
 		DRM_EXYNOS_GEM_CREATE, struct drm_exynos_gem_create)
@@ -152,6 +164,8 @@ struct drm_exynos_g2d_exec {
 
 #define DRM_IOCTL_EXYNOS_G2D_GET_VER		DRM_IOWR(DRM_COMMAND_BASE + \
 		DRM_EXYNOS_G2D_GET_VER, struct drm_exynos_g2d_get_ver)
+#define DRM_IOCTL_EXYNOS_G2D_GET_VER2		DRM_IOWR(DRM_COMMAND_BASE + \
+		DRM_EXYNOS_G2D_GET_VER2, struct drm_exynos_g2d_get_ver2)
 #define DRM_IOCTL_EXYNOS_G2D_SET_CMDLIST	DRM_IOWR(DRM_COMMAND_BASE + \
 		DRM_EXYNOS_G2D_SET_CMDLIST, struct drm_exynos_g2d_set_cmdlist)
 #define DRM_IOCTL_EXYNOS_G2D_EXEC		DRM_IOWR(DRM_COMMAND_BASE + \
