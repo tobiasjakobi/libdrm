@@ -61,6 +61,7 @@ struct g2d_context {
 	int				fd;
 	unsigned int			major;
 	unsigned int			minor;
+	unsigned int			caps;
 	struct drm_exynos_g2d_cmd	cmd[G2D_MAX_CMD_NR];
 	struct drm_exynos_g2d_cmd	cmd_buf[G2D_MAX_GEM_CMD_NR];
 	unsigned int			cmd_nr;
@@ -358,7 +359,7 @@ static int g2d_flush(struct g2d_context *ctx)
  */
 drm_public struct g2d_context *g2d_init(int fd)
 {
-	struct drm_exynos_g2d_get_ver ver;
+	struct drm_exynos_g2d_get_ver2 ver;
 	struct g2d_context *ctx;
 	int ret;
 
@@ -370,7 +371,7 @@ drm_public struct g2d_context *g2d_init(int fd)
 
 	ctx->fd = fd;
 
-	ret = drmIoctl(fd, DRM_IOCTL_EXYNOS_G2D_GET_VER, &ver);
+	ret = drmIoctl(fd, DRM_IOCTL_EXYNOS_G2D_GET_VER2, &ver);
 	if (ret < 0) {
 		fprintf(stderr, MSG_PREFIX "failed to get version.\n");
 		free(ctx);
@@ -379,8 +380,16 @@ drm_public struct g2d_context *g2d_init(int fd)
 
 	ctx->major = ver.major;
 	ctx->minor = ver.minor;
+	ctx->caps = ver.caps;
 
 	printf(MSG_PREFIX "G2D version (%d.%d).\n", ctx->major, ctx->minor);
+
+	if (ctx->caps & G2D_CAP_USERPTR)
+		printf(MSG_PREFIX "G2D driver supports userptr.\n");
+
+	if (ctx->caps & G2D_CAP_CMDLIST2)
+		printf(MSG_PREFIX "G2D driver supports cmdlist2.\n");
+
 	return ctx;
 }
 
