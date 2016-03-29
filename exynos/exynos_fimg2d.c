@@ -319,7 +319,7 @@ static void g2d_set_direction(struct g2d_context *ctx,
 static int g2d_flush(struct g2d_context *ctx)
 {
 	int ret;
-	struct drm_exynos_g2d_set_cmdlist cmdlist = {0};
+	struct drm_exynos_g2d_set_cmdlist2 cmdlist = {0};
 
 	if (ctx->cmd_nr == 0 && ctx->cmd_buf_nr == 0)
 		return 0;
@@ -329,10 +329,10 @@ static int g2d_flush(struct g2d_context *ctx)
 		return -EINVAL;
 	}
 
+	cmdlist.cmd_base = (uint64_t)(uintptr_t)&ctx->cmd_buf[0];
 	cmdlist.cmd = (uint64_t)(uintptr_t)&ctx->cmd[0];
-	cmdlist.cmd_buf = (uint64_t)(uintptr_t)&ctx->cmd_buf[0];
+	cmdlist.cmd_base_nr = ctx->cmd_buf_nr;
 	cmdlist.cmd_nr = ctx->cmd_nr;
-	cmdlist.cmd_buf_nr = ctx->cmd_buf_nr;
 
 	if (ctx->event_userdata) {
 		cmdlist.event_type = G2D_EVENT_NONSTOP;
@@ -346,7 +346,7 @@ static int g2d_flush(struct g2d_context *ctx)
 	ctx->cmd_nr = 0;
 	ctx->cmd_buf_nr = 0;
 
-	ret = drmIoctl(ctx->fd, DRM_IOCTL_EXYNOS_G2D_SET_CMDLIST, &cmdlist);
+	ret = drmIoctl(ctx->fd, DRM_IOCTL_EXYNOS_G2D_SET_CMDLIST2, &cmdlist);
 	if (ret < 0) {
 		fprintf(stderr, MSG_PREFIX "failed to set cmdlist.\n");
 		return ret;
