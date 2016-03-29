@@ -159,6 +159,64 @@ struct drm_exynos_g2d_set_cmdlist {
 	__u64					user_data;
 };
 
+/*
+ * Base commands:
+ *
+ *  base address (source/destination/pattern/mask)
+ *  plane2 base address (source/destination)
+ *  stride (source/destination/pattern/mask)
+ *  color mode (source/destination/pattern)
+ *  mask mode
+ *
+ *
+ * General commands:
+ *
+ *  left-top/right-bottom (source/destination/mask/cw)
+ *  pattern size and offset
+ *  direction (source/destination/pattern/mask)
+ *  select (source/destination)
+ *  scale control (source/mask)
+ *  x/y scaling (source/mask)
+ *  color registers (foreground/bg/solidfill/bluescreen)
+ *  repeat mode (source/mask)
+ *  padding color (source/mask)
+ *  A8 RGB extension (source/destination)
+ *  third operand, ROP4, global alpha
+ *  blend function, round mode, rotation
+ *  BitBLT command and start
+ *
+ * cw = clipping window
+ *
+ *
+ * Command stream formatting:
+ *
+ * The BitBLT start command has to be given explicitly.
+ * The general commands buffer has to end with a BitBLT start.
+ */
+
+struct drm_exynos_g2d_set_cmdlist2 {
+	/*
+	 * cmd_base: base commands
+	 * cmd: regular commands
+	 */
+	__u64					cmd_base;
+	__u64					cmd;
+
+	/*
+	 * A __u16 for the buffer sizes is plenty of space since
+	 * we have a much smaller limit for the total amount
+	 * of G2D commands anyway.
+	 */
+	__u16					cmd_base_nr;
+	__u16					cmd_nr;
+
+	__u16					flags;
+
+	/* For G2D event handling. */
+	__u16					event_type;
+	__u64					user_data;
+};
+
 struct drm_exynos_g2d_exec {
 	__u64					async;
 };
@@ -173,6 +231,7 @@ struct drm_exynos_g2d_exec {
 #define DRM_EXYNOS_G2D_EXEC		0x22
 #define DRM_EXYNOS_G2D_GET_VER2		0x23
 #define DRM_EXYNOS_G2D_USERPTR		0x24
+#define DRM_EXYNOS_G2D_SET_CMDLIST2	0x25
 
 #define DRM_IOCTL_EXYNOS_GEM_CREATE		DRM_IOWR(DRM_COMMAND_BASE + \
 		DRM_EXYNOS_GEM_CREATE, struct drm_exynos_gem_create)
@@ -191,6 +250,8 @@ struct drm_exynos_g2d_exec {
 		DRM_EXYNOS_G2D_EXEC, struct drm_exynos_g2d_exec)
 #define DRM_IOCTL_EXYNOS_G2D_USERPTR		DRM_IOW(DRM_COMMAND_BASE + \
 		DRM_EXYNOS_G2D_USERPTR, struct drm_exynos_g2d_userptr_op)
+#define DRM_IOCTL_EXYNOS_G2D_SET_CMDLIST2	DRM_IOWR(DRM_COMMAND_BASE + \
+		DRM_EXYNOS_G2D_SET_CMDLIST2, struct drm_exynos_g2d_set_cmdlist2)
 
 /* EXYNOS specific events */
 #define DRM_EXYNOS_G2D_EVENT		0x80000000
