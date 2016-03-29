@@ -54,8 +54,8 @@
 #define MSG_PREFIX "exynos/fimg2d: "
 
 #define G2D_MAX_CMD_NR		64
-#define G2D_MAX_GEM_CMD_NR	64
-#define G2D_MAX_CMD_LIST_NR	64
+#define G2D_MAX_BASE_CMD_NR	16
+#define G2D_MAX_CMDLIST_NR	64
 
 struct drm_exynos_g2d_cmd {
 	__u32	offset;
@@ -68,9 +68,9 @@ struct g2d_context {
 	unsigned int			minor;
 	unsigned int			caps;
 	struct drm_exynos_g2d_cmd	cmd[G2D_MAX_CMD_NR];
-	struct drm_exynos_g2d_cmd	cmd_buf[G2D_MAX_GEM_CMD_NR];
+	struct drm_exynos_g2d_cmd	cmd_base[G2D_MAX_BASE_CMD_NR];
 	unsigned int			cmd_nr;
-	unsigned int			cmd_buf_nr;
+	unsigned int			cmd_base_nr;
 	unsigned int			cmdlist_nr;
 	void				*event_userdata;
 };
@@ -178,13 +178,13 @@ static unsigned int g2d_get_blend_op(enum e_g2d_op op)
  *
  * @ctx: a pointer to g2d_context structure.
  * @num_cmds: number of (regular) commands.
- * @num_gem_cmds: number of GEM commands.
+ * @num_base_cmds: number of base commands.
  */
 static unsigned int g2d_check_space(const struct g2d_context *ctx,
-	unsigned int num_cmds, unsigned int num_gem_cmds)
+	unsigned int num_cmds, unsigned int num_base_cmds)
 {
 	if (ctx->cmd_nr + num_cmds >= G2D_MAX_CMD_NR ||
-	    ctx->cmd_buf_nr + num_gem_cmds >= G2D_MAX_GEM_CMD_NR)
+	    ctx->cmd_base_nr + num_base_cmds >= G2D_MAX_BASE_CMD_NR)
 		return 1;
 	else
 		return 0;
@@ -258,11 +258,11 @@ static void g2d_add_cmd(struct g2d_context *ctx, unsigned long cmd,
 	case DST_PLANE2_BASE_ADDR_REG:
 	case PAT_BASE_ADDR_REG:
 	case MASK_BASE_ADDR_REG:
-		assert(ctx->cmd_buf_nr < G2D_MAX_GEM_CMD_NR);
+		assert(ctx->cmd_base_nr < G2D_MAX_BASE_CMD_NR);
 
-		ctx->cmd_buf[ctx->cmd_buf_nr].offset = cmd;
-		ctx->cmd_buf[ctx->cmd_buf_nr].data = value;
-		ctx->cmd_buf_nr++;
+		ctx->cmd_base[ctx->cmd_base_nr].offset = cmd;
+		ctx->cmd_base[ctx->cmd_base_nr].data = value;
+		ctx->cmd_base_nr++;
 		break;
 	default:
 		assert(ctx->cmd_nr < G2D_MAX_CMD_NR);
@@ -321,17 +321,17 @@ static int g2d_flush(struct g2d_context *ctx)
 	int ret;
 	struct drm_exynos_g2d_set_cmdlist2 cmdlist = {0};
 
-	if (ctx->cmd_nr == 0 && ctx->cmd_buf_nr == 0)
+	if (ctx->cmd_nr == 0 && ctx->cmd_base_nr == 0)
 		return 0;
 
-	if (ctx->cmdlist_nr >= G2D_MAX_CMD_LIST_NR) {
+	if (ctx->cmdlist_nr >= G2D_MAX_CMDLIST_NR) {
 		fprintf(stderr, MSG_PREFIX "command list overflow.\n");
 		return -EINVAL;
 	}
 
-	cmdlist.cmd_base = (uint64_t)(uintptr_t)&ctx->cmd_buf[0];
+	cmdlist.cmd_base = (uint64_t)(uintptr_t)&ctx->cmd_base[0];
 	cmdlist.cmd = (uint64_t)(uintptr_t)&ctx->cmd[0];
-	cmdlist.cmd_base_nr = ctx->cmd_buf_nr;
+	cmdlist.cmd_base_nr = ctx->cmd_base_nr;
 	cmdlist.cmd_nr = ctx->cmd_nr;
 
 	if (ctx->event_userdata) {
@@ -344,7 +344,7 @@ static int g2d_flush(struct g2d_context *ctx)
 	}
 
 	ctx->cmd_nr = 0;
-	ctx->cmd_buf_nr = 0;
+	ctx->cmd_base_nr = 0;
 
 	ret = drmIoctl(ctx->fd, DRM_IOCTL_EXYNOS_G2D_SET_CMDLIST2, &cmdlist);
 	if (ret < 0) {
