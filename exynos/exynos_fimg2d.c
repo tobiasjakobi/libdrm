@@ -383,6 +383,12 @@ drm_public struct g2d_context *g2d_init(int fd)
 		return NULL;
 	}
 
+	if (!(ver.caps & G2D_CAP_CMDLIST2)) {
+		fprintf(stderr, MSG_PREFIX "G2D driver doesn't support cmdlist2.\n");
+		free(ctx);
+		return NULL;
+	}
+
 	ctx->major = ver.major;
 	ctx->minor = ver.minor;
 	ctx->caps = ver.caps;
@@ -391,9 +397,6 @@ drm_public struct g2d_context *g2d_init(int fd)
 
 	if (ctx->caps & G2D_CAP_USERPTR)
 		printf(MSG_PREFIX "G2D driver supports userptr.\n");
-
-	if (ctx->caps & G2D_CAP_CMDLIST2)
-		printf(MSG_PREFIX "G2D driver supports cmdlist2.\n");
 
 	return ctx;
 }
