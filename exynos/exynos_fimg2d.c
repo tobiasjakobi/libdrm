@@ -377,6 +377,48 @@ static void g2d_add_cmd(struct g2d_context *ctx, unsigned long cmd,
 }
 
 /*
+ * g2d_add_base_cmd - add a base command to the command buffer.
+ *
+ * @ctx: pointer to a g2d_context structure.
+ * @cmd: base command.
+ * @value: argument to the base command.
+ *
+ * The caller has to make sure that the commands buffers have enough space
+ * left to hold the command. Use g2d_check_space() to ensure this.
+ */
+static void g2d_add_base_cmd(struct g2d_context *ctx, unsigned long cmd,
+			unsigned long value)
+{
+	assert(is_g2d_base_cmd(cmd));
+	assert(ctx->cmd_base_nr < G2D_MAX_BASE_CMD_NR);
+
+	ctx->cmd_base[ctx->cmd_base_nr].offset = cmd;
+	ctx->cmd_base[ctx->cmd_base_nr].data = value;
+	ctx->cmd_base_nr++;
+}
+
+/*
+ * g2d_add_cmd2 - add a regular command to the command buffer.
+ *
+ * @ctx: pointer to a g2d_context structure.
+ * @cmd: regular command.
+ * @value: argument to the regular command.
+ *
+ * The caller has to make sure that the commands buffers have enough space
+ * left to hold the command. Use g2d_check_space() to ensure this.
+ */
+static void g2d_add_cmd2(struct g2d_context *ctx, unsigned long cmd,
+			unsigned long value)
+{
+	assert(is_g2d_cmd(cmd));
+	assert(ctx->cmd_nr < G2D_MAX_CMD_NR);
+
+	ctx->cmd[ctx->cmd_nr].offset = cmd;
+	ctx->cmd[ctx->cmd_nr].data = value;
+	ctx->cmd_nr++;
+}
+
+/*
  * g2d_add_base_addr - helper function to set dst/src base address register.
  *
  * @ctx: a pointer to g2d_context structure.
