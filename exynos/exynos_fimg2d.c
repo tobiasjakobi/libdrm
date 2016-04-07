@@ -238,6 +238,108 @@ static int g2d_validate_blending_op(
 	return 0;
 }
 
+static int is_g2d_base_cmd(unsigned long cmd)
+{
+	switch (cmd & ~(G2D_BUF_USERPTR)) {
+	/* source */
+	case SRC_BASE_ADDR_REG:
+	case SRC_STRIDE_REG:
+	case SRC_COLOR_MODE_REG:
+	case SRC_PLANE2_BASE_ADDR_REG:
+		return 1;
+
+	/* destination */
+	case DST_BASE_ADDR_REG:
+	case DST_STRIDE_REG:
+	case DST_COLOR_MODE_REG:
+	case DST_PLANE2_BASE_ADDR_REG:
+		return 1;
+
+	/* pattern */
+	case PAT_BASE_ADDR_REG:
+	case PAT_COLOR_MODE_REG:
+	case PAT_STRIDE_REG:
+		return 1;
+
+	/* mask */
+	case MASK_BASE_ADDR_REG:
+	case MASK_STRIDE_REG:
+	case MASK_MODE_REG:
+		return 1;
+
+	default:
+		return 0;
+	}
+}
+
+static int is_g2d_cmd(unsigned long cmd)
+{
+	switch (cmd & ~(G2D_BUF_USERPTR)) {
+	/* command */
+	case BITBLT_START_REG:
+	case BITBLT_COMMAND_REG:
+	case BLEND_FUNCTION_REG:
+	case ROUND_MODE_REG:
+		return 1;
+
+	/* parameter settings */
+	case ROTATE_REG:
+	case SRC_MASK_DIRECT_REG:
+	case DST_PAT_DIRECT_REG:
+		return 1;
+
+	/* source */
+	case SRC_SELECT_REG:
+	case SRC_LEFT_TOP_REG:
+	case SRC_RIGHT_BOTTOM_REG:
+	case SRC_REPEAT_MODE_REG:
+	case SRC_PAD_VALUE_REG:
+	case SRC_A8_RGB_EXT_REG:
+	case SRC_SCALE_CTRL_REG:
+	case SRC_XSCALE_REG:
+	case SRC_YSCALE_REG:
+		return 1;
+
+	/* destination */
+	case DST_SELECT_REG:
+	case DST_LEFT_TOP_REG:
+	case DST_RIGHT_BOTTOM_REG:
+	case DST_A8_RGB_EXT_REG:
+		return 1;
+
+	/* pattern */
+	case PAT_SIZE_REG:
+	case PAT_OFFSET_REG:
+		return 1;
+
+	/* mask */
+	case MASK_LEFT_TOP_REG:
+	case MASK_RIGHT_BOTTOM_REG:
+	case MASK_REPEAT_MODE_REG:
+	case MASK_PAD_VALUE_REG:
+	case MASK_SCALE_CTRL_REG:
+	case MASK_XSCALE_REG:
+	case MASK_YSCALE_REG:
+		return 1;
+
+	/* third operand, ROP and alpha setting */
+	case THIRD_OPERAND_REG:
+	case ROP4_REG:
+	case ALPHA_REG:
+		return 1;
+
+	/* color setting */
+	case FG_COLOR_REG:
+	case BG_COLOR_REG:
+	case BS_COLOR_REG:
+	case SF_COLOR_REG:
+		return 1;
+
+	default:
+		return 0;
+	}
+}
+
 /*
  * g2d_add_cmd - set given command and value to user side command buffer.
  *
