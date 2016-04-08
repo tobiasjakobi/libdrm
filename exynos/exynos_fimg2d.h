@@ -85,6 +85,29 @@ enum e_g2d_color_mode {
 	G2D_COLOR_MODE_MASK = 0xFFFFFFFF,
 };
 
+enum e_g2d_mask_mode {
+	/* mask format */
+	G2D_MASK_FMT_1BIT,
+	G2D_MASK_FMT_4BIT,
+	G2D_MASK_FMT_8BIT,
+	G2D_MASK_FMT_16BIT_565,
+	G2D_MASK_FMT_16BIT_1555,
+	G2D_MASK_FMT_16BIT_4444,
+	G2D_MASK_FMT_32BIT_8888,
+	G2D_MASK_FMT_4BIT_WINCE_AA_FONT,
+
+	/* mask color order */
+	G2D_MASK_ORDER_AXRGB			= (0 << 4),
+	G2D_MASK_ORDER_RGBAX			= (1 << 4),
+	G2D_MASK_ORDER_AXBGR			= (2 << 4),
+	G2D_MASK_ORDER_BGRAX			= (3 << 4),
+
+	/* mask type */
+	G2D_MASK_TYPE_ALPHA			= (0 << 8),
+	G2D_MASK_TYPE_ARGB			= (1 << 8),
+	G2D_MASK_TYPE_MIXED			= (2 << 8),
+};
+
 enum e_g2d_select_mode {
 	G2D_SELECT_MODE_NORMAL	= (0 << 0),
 	G2D_SELECT_MODE_FGCOLOR = (1 << 0),
