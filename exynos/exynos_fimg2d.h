@@ -342,6 +342,19 @@ union g2d_rop4_val {
 	} data;
 };
 
+union g2d_pattern_size_val {
+	unsigned int val;
+	struct {
+		/* Allowed range for width is 1 ~ 8000 (default = 1). */
+		unsigned int		width:13;
+		unsigned int		reserved1:3;
+
+		/* Allowed range for height is 1 ~ 8000 (default = 1). */
+		unsigned int		height:13;
+		unsigned int		reserved2:3;
+	} data;
+};
+
 union g2d_bitblt_cmd_val {
 	unsigned int val;
 	struct {
