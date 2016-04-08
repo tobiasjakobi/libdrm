@@ -341,42 +341,6 @@ static int is_g2d_cmd(unsigned long cmd)
 }
 
 /*
- * g2d_add_cmd_old - set given command and value to user side command buffer.
- *
- * @ctx: a pointer to g2d_context structure.
- * @cmd: command data.
- * @value: value data.
- *
- * The caller has to make sure that the commands buffers have enough space
- * left to hold the command. Use g2d_check_space() to ensure this.
- */
-static void g2d_add_cmd_old(struct g2d_context *ctx, unsigned long cmd,
-			unsigned long value)
-{
-	switch (cmd & ~(G2D_BUF_USERPTR)) {
-	case SRC_BASE_ADDR_REG:
-	case SRC_PLANE2_BASE_ADDR_REG:
-	case DST_BASE_ADDR_REG:
-	case DST_PLANE2_BASE_ADDR_REG:
-	case PAT_BASE_ADDR_REG:
-	case MASK_BASE_ADDR_REG:
-		assert(ctx->cmd_base_nr < G2D_MAX_BASE_CMD_NR);
-
-		ctx->cmd_base[ctx->cmd_base_nr].offset = cmd;
-		ctx->cmd_base[ctx->cmd_base_nr].data = value;
-		ctx->cmd_base_nr++;
-		break;
-	default:
-		assert(ctx->cmd_nr < G2D_MAX_CMD_NR);
-
-		ctx->cmd[ctx->cmd_nr].offset = cmd;
-		ctx->cmd[ctx->cmd_nr].data = value;
-		ctx->cmd_nr++;
-		break;
-	}
-}
-
-/*
  * g2d_add_base_cmd - add a base command to the command buffer.
  *
  * @ctx: pointer to a g2d_context structure.
