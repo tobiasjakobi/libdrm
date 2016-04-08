@@ -796,18 +796,19 @@ g2d_copy_rop(struct g2d_context *ctx, struct g2d_image *src,
 		return -EINVAL;
 	}
 
-	if (g2d_check_space(ctx, 13 + (use_third_op ? 2 : 0), 2))
+	if (g2d_check_space(ctx, 9 + (use_third_op ? 2 : 0), 6))
 		return -ENOSPC;
 
-	g2d_add_cmd(ctx, DST_SELECT_REG, G2D_SELECT_MODE_NORMAL);
-	g2d_add_cmd(ctx, DST_COLOR_MODE_REG, dst->color_mode);
+	g2d_add_base_addr(ctx, src, g2d_src);
+	g2d_add_base_cmd(ctx, SRC_COLOR_MODE_REG, src->color_mode);
+	g2d_add_base_cmd(ctx, SRC_STRIDE_REG, src->stride);
+
 	g2d_add_base_addr(ctx, dst, g2d_dst);
-	g2d_add_cmd(ctx, DST_STRIDE_REG, dst->stride);
+	g2d_add_base_cmd(ctx, DST_COLOR_MODE_REG, dst->color_mode);
+	g2d_add_base_cmd(ctx, DST_STRIDE_REG, dst->stride);
 
 	g2d_add_cmd(ctx, SRC_SELECT_REG, G2D_SELECT_MODE_NORMAL);
-	g2d_add_cmd(ctx, SRC_COLOR_MODE_REG, src->color_mode);
-	g2d_add_base_addr(ctx, src, g2d_src);
-	g2d_add_cmd(ctx, SRC_STRIDE_REG, src->stride);
+	g2d_add_cmd(ctx, DST_SELECT_REG, G2D_SELECT_MODE_NORMAL);
 
 	pt.data.x = src_x;
 	pt.data.y = src_y;
@@ -833,6 +834,7 @@ g2d_copy_rop(struct g2d_context *ctx, struct g2d_image *src,
 
 		third_op.val = 0;
 		third_op.data.unmasked_select = G2D_THIRD_OP_SELECT_FG_COLOR;
+		third_op.data.masked_select = G2D_THIRD_OP_SELECT_FG_COLOR;
 
 		g2d_add_cmd(ctx, FG_COLOR_REG, src->color);
 		g2d_add_cmd(ctx, THIRD_OPERAND_REG, third_op.val);
