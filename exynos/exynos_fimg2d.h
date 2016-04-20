@@ -430,6 +430,13 @@ struct g2d_image {
 	void				*mapped_ptr[G2D_PLANE_MAX_NR];
 };
 
+struct g2d_rect {
+	uint16_t x;
+	uint16_t y;
+	uint16_t w;
+	uint16_t h;
+};
+
 struct g2d_context;
 
 struct g2d_context *g2d_init(int fd);
@@ -439,6 +446,8 @@ int g2d_exec(struct g2d_context *ctx);
 int g2d_solid_fill(struct g2d_context *ctx, struct g2d_image *img,
 			unsigned int x, unsigned int y, unsigned int w,
 			unsigned int h);
+int g2d_solid_fill_multi(struct g2d_context *ctx, struct g2d_image *img,
+			const struct g2d_rect *rects, unsigned int num_rects);
 int g2d_copy(struct g2d_context *ctx, struct g2d_image *src,
 		struct g2d_image *dst, unsigned int src_x,
 		unsigned int src_y, unsigned int dst_x, unsigned int dst_y,

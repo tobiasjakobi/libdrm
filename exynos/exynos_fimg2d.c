@@ -609,6 +609,73 @@ g2d_solid_fill(struct g2d_context *ctx, struct g2d_image *img,
 }
 
 /**
+ * g2d_solid_fill_multi - fill given buffer with given color data.
+ *
+ * @ctx: a pointer to g2d_context structure.
+ * @img: a pointer to g2d_image structure including image and buffer
+ *	information.
+ * @rects: pointer to an array of g2d_rect structures.
+ * @num_rects: number of rectangle objects in array.
+ *
+ * Empty rectangles are silently ignored.
+ */
+drm_public int
+g2d_solid_fill_multi(struct g2d_context *ctx, struct g2d_image *img,
+			const struct g2d_rect *rects, unsigned int num_rects)
+{
+	union g2d_bitblt_cmd_val bitblt;
+	union g2d_point_val pt;
+	unsigned int i;
+
+	if (num_rects == 0)
+		return 0;
+
+	if (g2d_check_space(ctx, 3 + 3 * num_rects, 3))
+		return -ENOSPC;
+
+	g2d_add_base_addr(ctx, img, g2d_dst);
+	g2d_add_base_cmd(ctx, DST_COLOR_MODE_REG, img->color_mode);
+	g2d_add_base_cmd(ctx, DST_STRIDE_REG, img->stride);
+
+	g2d_add_cmd(ctx, DST_SELECT_REG, G2D_SELECT_MODE_NORMAL);
+	g2d_add_cmd(ctx, SF_COLOR_REG, img->color);
+
+	bitblt.val = 0;
+	bitblt.data.fast_solid_color_fill_en = 1;
+	g2d_add_cmd(ctx, BITBLT_COMMAND_REG, bitblt.val);
+
+	for (i = 0; i < num_rects; ++i) {
+		unsigned int x, y, w, h;
+
+		x = rects[i].x;
+		y = rects[i].y;
+		w = rects[i].w;
+		h = rects[i].h;
+
+		if (x + w > img->width)
+			w = img->width - x;
+		if (y + h > img->height)
+			h = img->height - y;
+
+		if (w == 0 || h == 0)
+			continue;
+
+		pt.data.x = x;
+		pt.data.y = y;
+		g2d_add_cmd(ctx, DST_LEFT_TOP_REG, pt.val);
+
+		pt.data.x = x + w;
+		pt.data.y = y + h;
+		g2d_add_cmd(ctx, DST_RIGHT_BOTTOM_REG, pt.val);
+
+		g2d_add_cmd(ctx, BITBLT_START_REG, G2D_START_BITBLT | G2D_START_CASESEL);
+
+	}
+
+	return g2d_flush(ctx);
+}
+
+/**
  * g2d_copy - copy contents in source buffer to destination buffer.
  *
  * @ctx: a pointer to g2d_context structure.
