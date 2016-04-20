@@ -188,6 +188,79 @@ bo_fail:
 	return ret;
 }
 
+static int fimg2d_clear2(struct g2d_context *ctx, struct exynos_device *dev)
+{
+	struct g2d_image img = { 0 };
+	struct exynos_bo *bo;
+	void *buf;
+	struct g2d_rect rects[4];
+
+	const unsigned num_pixels = buf_width * buf_height;
+	int ret = 0;
+
+	bo = exynos_bo_create(dev, num_pixels * sizeof(uint32_t), 0);
+
+	if (!bo) {
+		fprintf(stderr, "error: failed to create buffer object\n");
+		ret = -4;
+
+		goto bo_fail;
+	}
+
+	img.width = buf_width;
+	img.height = buf_height;
+	img.stride = buf_width * sizeof(uint32_t);
+	img.color_mode = G2D_COLOR_FMT_ARGB8888 | G2D_ORDER_AXRGB;
+	img.buf_type = G2D_IMGBUF_GEM;
+	img.bo[0] = bo->handle;
+
+	buf = exynos_bo_map(bo);
+
+	rects[0].x = rects[0].y = 0;
+	rects[1].x = 0;
+	rects[1].y = buf_height / 2;
+	rects[2].x = buf_width / 2;
+	rects[2].y = 0;
+	rects[3].x = buf_width / 2;
+	rects[3].y = buf_height / 2;
+
+	rects[0].w = rects[1].w = rects[2].w = rects[3].w = buf_width / 2;
+	rects[0].h = rects[1].h = rects[2].h = rects[3].h = buf_height / 2;
+
+	fprintf(stderr, "Doing 1st buffer clear using solid fill...\n");
+
+	/*
+	 * Clear the buffer with a single clear rectangle.
+	 */
+	img.color = 0xff0aff0b;
+	ret = g2d_solid_fill(ctx, &img, 0, 0, buf_width, buf_height);
+
+	if (!ret)
+		ret = g2d_exec(ctx);
+
+	if (!ret)
+		print_userspace(buf, sizeof(uint32_t), buf_width, buf_height);
+
+	fprintf(stderr, "Doing 2nd buffer clear using solid fill (multi)...\n");
+
+	/*
+	 * Clear the buffer with a four clear rectangles.
+	 */
+	img.color = 0xff88cd22;
+	ret = g2d_solid_fill_multi(ctx, &img, rects, 4);
+
+	if (!ret)
+		ret = g2d_exec(ctx);
+
+	if (!ret)
+		print_userspace(buf, sizeof(uint32_t), buf_width, buf_height);
+
+bo_fail:
+	exynos_bo_destroy(bo);
+
+	return ret;
+}
+
 int main(int argc, char **argv)
 {
 	int fd, ret;
@@ -222,6 +295,9 @@ int main(int argc, char **argv)
 	}
 
 	ret = fimg2d_rop(ctx, dev);
+
+	if (!ret)
+		ret = fimg2d_clear2(ctx, dev);
 
 	g2d_fini(ctx);
 
