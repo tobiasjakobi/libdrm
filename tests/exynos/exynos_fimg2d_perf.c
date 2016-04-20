@@ -208,6 +208,102 @@ static int fimg2d_perf_multi(struct exynos_bo *bo, struct g2d_context *ctx,
 	return ret;
 }
 
+static int fimg2d_perf_multi2(struct exynos_bo *bo, struct g2d_context *ctx,
+			unsigned buf_width, unsigned buf_height, unsigned iterations, unsigned batch)
+{
+	struct timespec tspec = { 0 };
+	struct g2d_image image = { 0 };
+	struct g2d_rect *rects;
+
+	unsigned long long g2d_time;
+	unsigned i, j;
+	int ret = 0;
+
+	rects = calloc(batch, sizeof(struct g2d_rect));
+	if (rects == NULL) {
+		fprintf(stderr, "error: failed to allocate G2D rectangles.\n");
+		return -ENOMEM;
+	}
+
+	image.width = buf_width;
+	image.height = buf_height;
+	image.stride = buf_width * 4;
+	image.color_mode = G2D_COLOR_FMT_ARGB8888 | G2D_ORDER_AXRGB;
+	image.buf_type = G2D_IMGBUF_GEM;
+	image.bo[0] = bo->handle;
+
+	srand(time(NULL));
+
+	printf("starting multi2 G2D performance test (batch size = %u)\n", batch);
+	printf("buffer width = %u, buffer height = %u, iterations = %u\n",
+		buf_width, buf_height, iterations);
+
+	if (output_mathematica)
+		putchar('{');
+
+	for (i = 0; i < iterations; ++i) {
+		unsigned num_pixels = 0;
+
+		image.color = rand();
+
+		for (j = 0; j < batch; ++j) {
+			unsigned x, y, w, h;
+
+			x = rand() % buf_width;
+			y = rand() % buf_height;
+
+			if (x == (buf_width - 1))
+				x -= 1;
+			if (y == (buf_height - 1))
+				y -= 1;
+
+			w = rand() % (buf_width - x);
+			h = rand() % (buf_height - y);
+
+			if (w == 0) w = 1;
+			if (h == 0) h = 1;
+
+			num_pixels += w * h;
+
+			rects[j].x = x;
+			rects[j].y = y;
+			rects[j].w = w;
+			rects[j].h = h;
+		}
+
+		ret = g2d_solid_fill_multi(ctx, &image, rects, batch);
+		if (ret == 0) {
+			clock_gettime(CLOCK_MONOTONIC, &tspec);
+			ret = g2d_exec(ctx);
+		}
+
+		if (ret != 0) {
+			fprintf(stderr, "error: iteration %u failed (num_pixels = %u)\n", i, num_pixels);
+			break;
+		} else {
+			struct timespec end = { 0 };
+			clock_gettime(CLOCK_MONOTONIC, &end);
+
+			g2d_time = (end.tv_sec - tspec.tv_sec) * 1000000000ULL;
+			g2d_time += (end.tv_nsec - tspec.tv_nsec);
+
+			if (output_mathematica) {
+				if (i != 0) putchar(',');
+				printf("{%u,%llu}", num_pixels, g2d_time);
+			} else {
+				printf("num_pixels = %u, usecs = %llu\n", num_pixels, g2d_time);
+			}
+		}
+	}
+
+	if (output_mathematica)
+		printf("}\n");
+
+	free(rects);
+
+	return ret;
+}
+
 static void usage(const char *name)
 {
 	fprintf(stderr, "usage: %s [-ibwh]\n\n", name);
@@ -310,6 +406,9 @@ int main(int argc, char **argv)
 
 	if (ret == 0)
 		ret = fimg2d_perf_multi(bo, ctx, bufw, bufh, iters, batch);
+
+	if (ret == 0)
+		ret = fimg2d_perf_multi2(bo, ctx, bufw, bufh, iters, batch);
 
 	exynos_bo_destroy(bo);
 
