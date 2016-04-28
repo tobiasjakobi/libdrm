@@ -1101,6 +1101,141 @@ g2d_copy_with_scale(struct g2d_context *ctx, struct g2d_image *src,
 }
 
 /**
+ * g2d_scale_rop_multi - apply ROP with scaling to multiple rectangles.
+ *
+ * @ctx: a pointer to g2d_context structure.
+ * @src: a pointer to g2d_image structure including image and buffer
+ *	information to source.
+ * @dst: a pointer to g2d_image structure including image and buffer
+ *	information to destination.
+ * @src_rects: pointer to an array of g2d_rect structures acting as
+ *	blitting sources.
+ * @dst_rects: pointer to an array of g2d_rect structures acting as
+ *	blitting destinations.
+ * @num_rects: number of rectangle objects in array
+ * @rop4: raster operation definition.
+ * @use_third_op: setup the third operand register to use the
+ *	color of the source image.
+ */
+drm_public int
+g2d_scale_rop_multi(struct g2d_context *ctx, struct g2d_image *src,
+		struct g2d_image *dst, const struct g2d_rect *src_rects,
+		const struct g2d_rect *dst_rects, unsigned int num_rects,
+		union g2d_rop4_val rop4, unsigned int use_third_op)
+{
+	union g2d_bitblt_cmd_val bitblt_cmd;
+	unsigned int i, repeat_pad;
+
+	repeat_pad = src->repeat_mode == G2D_REPEAT_MODE_PAD ? 1 : 0;
+
+	if (rop4.val & 0xffff0000) {
+		fprintf(stderr, MSG_PREFIX "invalid ROP4 value.\n");
+		return -EINVAL;
+	}
+
+	if (rop4.data.masked_rop3 != 0) {
+		fprintf(stderr, MSG_PREFIX "masked ROP not implemented yet.\n");
+		return -EINVAL;
+	}
+
+	if (g2d_check_space(ctx, 6 + num_rects * 7 + repeat_pad + (use_third_op ? 2 : 0), 6))
+		return -ENOSPC;
+
+	g2d_add_base_addr(ctx, src, g2d_src);
+	g2d_add_base_cmd(ctx, SRC_COLOR_MODE_REG, src->color_mode);
+	g2d_add_base_cmd(ctx, SRC_STRIDE_REG, src->stride);
+
+	g2d_add_base_addr(ctx, dst, g2d_dst);
+	g2d_add_base_cmd(ctx, DST_COLOR_MODE_REG, dst->color_mode);
+	g2d_add_base_cmd(ctx, DST_STRIDE_REG, dst->stride);
+
+	g2d_add_cmd(ctx, SRC_SELECT_REG, G2D_SELECT_MODE_NORMAL);
+	g2d_add_cmd(ctx, SRC_SCALE_CTRL_REG, G2D_SCALE_MODE_BILINEAR);
+	g2d_add_cmd(ctx, SRC_REPEAT_MODE_REG, src->repeat_mode);
+	g2d_add_cmd(ctx, DST_SELECT_REG, G2D_SELECT_MODE_NORMAL);
+
+	if (repeat_pad)
+		g2d_add_cmd(ctx, SRC_PAD_VALUE_REG, dst->color);
+
+	if (use_third_op) {
+		union g2d_third_op_val third_op;
+
+		third_op.val = 0;
+		third_op.data.unmasked_select = G2D_THIRD_OP_SELECT_FG_COLOR;
+		third_op.data.masked_select = G2D_THIRD_OP_SELECT_FG_COLOR;
+
+		g2d_add_cmd(ctx, FG_COLOR_REG, src->color);
+		g2d_add_cmd(ctx, THIRD_OPERAND_REG, third_op.val);
+	}
+
+	bitblt_cmd.val = 0;
+	bitblt_cmd.data.rop4_alpha_en = src->component_alpha ?
+		G2D_SELECT_ROP_FOR_ALPHA_BLEND : G2D_SELECT_SRC_FOR_ALPHA_BLEND;
+
+	g2d_add_cmd(ctx, BITBLT_COMMAND_REG, bitblt_cmd.val);
+	g2d_add_cmd(ctx, ROP4_REG, rop4.val);
+
+	for (i = 0; i < num_rects; ++i) {
+		union g2d_point_val pt;
+
+		unsigned int src_x, src_y, src_w, src_h;
+		unsigned int dst_x, dst_y, dst_w, dst_h;
+		unsigned int scale_x, scale_y;
+
+		src_x = src_rects[i].x;
+		src_y = src_rects[i].y;
+		src_w = src_rects[i].w;
+		src_h = src_rects[i].h;
+
+		dst_x = dst_rects[i].x;
+		dst_y = dst_rects[i].y;
+		dst_w = dst_rects[i].w;
+		dst_h = dst_rects[i].h;
+
+		scale_x = g2d_get_scaling(src_w, dst_w);
+		scale_y = g2d_get_scaling(src_h, dst_h);
+
+		if (src_x + src->width > src_w)
+			src_w = src->width - src_x;
+		if (src_y + src->height > src_h)
+			src_h = src->height - src_y;
+
+		if (src_w == 0 || src_h == 0)
+			continue;
+
+		if (dst_x + dst->width > dst_w)
+			dst_w = dst->width - dst_x;
+		if (dst_y + dst->height > dst_h)
+			dst_h = dst->height - dst_y;
+
+		if (dst_w == 0 || dst_h == 0)
+			continue;
+
+		g2d_add_cmd(ctx, SRC_XSCALE_REG, scale_x);
+		g2d_add_cmd(ctx, SRC_YSCALE_REG, scale_y);
+
+		pt.data.x = src_x;
+		pt.data.y = src_y;
+		g2d_add_cmd(ctx, SRC_LEFT_TOP_REG, pt.val);
+		pt.data.x += src_w;
+		pt.data.y += src_h;
+		g2d_add_cmd(ctx, SRC_RIGHT_BOTTOM_REG, pt.val);
+
+		pt.data.x = dst_x;
+		pt.data.y = dst_y;
+		g2d_add_cmd(ctx, DST_LEFT_TOP_REG, pt.val);
+		pt.data.x += dst_w;
+		pt.data.y += dst_h;
+		g2d_add_cmd(ctx, DST_RIGHT_BOTTOM_REG, pt.val);
+
+		g2d_add_cmd(ctx, BITBLT_START_REG, G2D_START_BITBLT | G2D_START_CASESEL);
+	}
+
+	return g2d_flush(ctx);
+}
+
+
+/**
  * g2d_blend - blend image data in source and destination buffers.
  *
  * @ctx: a pointer to g2d_context structure.

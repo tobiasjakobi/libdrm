@@ -466,6 +466,10 @@ int g2d_copy_with_scale(struct g2d_context *ctx, struct g2d_image *src,
 				unsigned int src_h, unsigned int dst_x,
 				unsigned int dst_y, unsigned int dst_w,
 				unsigned int dst_h, unsigned int negative);
+int g2d_scale_rop_multi(struct g2d_context *ctx, struct g2d_image *src,
+				struct g2d_image *dst, const struct g2d_rect *src_rects,
+				const struct g2d_rect *dst_rects, unsigned int num_rects,
+				union g2d_rop4_val rop4, unsigned int use_third_op);
 int g2d_blend(struct g2d_context *ctx, struct g2d_image *src,
 		struct g2d_image *dst, unsigned int src_x,
 		unsigned int src_y, unsigned int dst_x, unsigned int dst_y,
