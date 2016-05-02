@@ -53,7 +53,7 @@
 
 #define MSG_PREFIX "exynos/fimg2d: "
 
-#define G2D_MAX_CMD_NR		64
+#define G2D_MAX_CMD_NR		110
 #define G2D_MAX_BASE_CMD_NR	16
 #define G2D_MAX_CMDLIST_NR	64
 
