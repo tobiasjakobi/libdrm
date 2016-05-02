@@ -760,6 +760,106 @@ g2d_copy(struct g2d_context *ctx, struct g2d_image *src,
 }
 
 /**
+ * g2d_copy_multi - copy multiple rectangles from the source
+ *			buffer to the destination buffer.
+ *
+ * @ctx: a pointer to g2d_context structure.
+ * @src: a pointer to g2d_image structure including image and buffer
+ *	information to source.
+ * @dst: a pointer to g2d_image structure including image and buffer
+ *	information to destination.
+ * @src_rects: pointer to an array of g2d_rect structures acting as
+ *	blitting sources.
+ * @dst_rects: pointer to an array of g2d_rect structures acting as
+ *	blitting destinations.
+ * @num_rects: number of rectangle objects in array.
+ *
+ * Width and height of the destination rectangles is ignored, only
+ * the position is used (dimensions are determined by the source).
+ * Empty rectangles are silently ignored.
+ */
+drm_public int
+g2d_copy_multi(struct g2d_context *ctx, struct g2d_image *src,
+		struct g2d_image *dst, const struct g2d_rect *src_rects,
+		const struct g2d_rect *dst_rects, unsigned int num_rects)
+{
+	union g2d_rop4_val rop4;
+	unsigned int i;
+
+	if (num_rects == 0)
+		return 0;
+
+	if (g2d_check_space(ctx, 3 + num_rects * 5, 6))
+		return -ENOSPC;
+
+	g2d_add_base_addr(ctx, src, g2d_src);
+	g2d_add_base_cmd(ctx, SRC_COLOR_MODE_REG, src->color_mode);
+	g2d_add_base_cmd(ctx, SRC_STRIDE_REG, src->stride);
+
+	g2d_add_base_addr(ctx, dst, g2d_dst);
+	g2d_add_base_cmd(ctx, DST_COLOR_MODE_REG, dst->color_mode);
+	g2d_add_base_cmd(ctx, DST_STRIDE_REG, dst->stride);
+
+	g2d_add_cmd(ctx, SRC_SELECT_REG, G2D_SELECT_MODE_NORMAL);
+	g2d_add_cmd(ctx, DST_SELECT_REG, G2D_SELECT_MODE_BGCOLOR);
+
+	rop4.val = 0;
+	rop4.data.unmasked_rop3 = G2D_ROP3_SRC;
+	g2d_add_cmd(ctx, ROP4_REG, rop4.val);
+
+	for (i = 0; i < num_rects; ++i) {
+		union g2d_point_val pt;
+
+		unsigned int src_x, src_y, w, h;
+		unsigned int dst_x, dst_y, dst_w, dst_h;
+
+		src_x = src_rects[i].x;
+		src_y = src_rects[i].y;
+		w = src_rects[i].w;
+		h = src_rects[i].h;
+
+		dst_x = dst_rects[i].x;
+		dst_y = dst_rects[i].y;
+		dst_w = w;
+		dst_h = h;
+
+		if (src_x + src->width > w)
+			w = src->width - src_x;
+		if (src_y + src->height > h)
+			h = src->height - src_y;
+
+		if (dst_x + dst->width > dst_w)
+			dst_w = dst->width - dst_x;
+		if (dst_y + dst->height > dst_h)
+			dst_h = dst->height - dst_y;
+
+		w = MIN(w, dst_w);
+		h = MIN(h, dst_h);
+
+		if (w == 0 || h == 0)
+			continue;
+
+		pt.data.x = src_x;
+		pt.data.y = src_y;
+		g2d_add_cmd(ctx, SRC_LEFT_TOP_REG, pt.val);
+		pt.data.x += w;
+		pt.data.y += h;
+		g2d_add_cmd(ctx, SRC_RIGHT_BOTTOM_REG, pt.val);
+
+		pt.data.x = dst_x;
+		pt.data.y = dst_y;
+		g2d_add_cmd(ctx, DST_LEFT_TOP_REG, pt.val);
+		pt.data.x += w;
+		pt.data.y += h;
+		g2d_add_cmd(ctx, DST_RIGHT_BOTTOM_REG, pt.val);
+
+		g2d_add_cmd(ctx, BITBLT_START_REG, G2D_START_BITBLT | G2D_START_CASESEL);
+	}
+
+	return g2d_flush(ctx);
+}
+
+/**
  * g2d_copy_rop - copy contents from source buffer to destination buffer
  *		while applying a raster operaton (ROP4).
  *

@@ -452,6 +452,9 @@ int g2d_copy(struct g2d_context *ctx, struct g2d_image *src,
 		struct g2d_image *dst, unsigned int src_x,
 		unsigned int src_y, unsigned int dst_x, unsigned int dst_y,
 		unsigned int w, unsigned int h);
+int g2d_copy_multi(struct g2d_context *ctx, struct g2d_image *src,
+		struct g2d_image *dst, const struct g2d_rect *src_rects,
+		const struct g2d_rect *dst_rects, unsigned int num_rects);
 int g2d_copy_rop(struct g2d_context *ctx, struct g2d_image *src,
 		struct g2d_image *dst, unsigned int src_x, unsigned int src_y,
 		unsigned int dst_x, unsigned dst_y, unsigned int w,
