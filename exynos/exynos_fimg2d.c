@@ -1019,16 +1019,16 @@ g2d_move(struct g2d_context *ctx, struct g2d_image *img,
 
 	src_w = w;
 	src_h = h;
-	if (src_x + img->width > w)
+	if (src_x + src_w > img->width)
 		src_w = img->width - src_x;
-	if (src_y + img->height > h)
+	if (src_y + src_h > img->height)
 		src_h = img->height - src_y;
 
 	dst_w = w;
 	dst_h = w;
-	if (dst_x + img->width > w)
+	if (dst_x + dst_w > img->width)
 		dst_w = img->width - dst_x;
-	if (dst_y + img->height > h)
+	if (dst_y + dst_h > img->height)
 		dst_h = img->height - dst_y;
 
 	w = MIN(src_w, dst_w);
