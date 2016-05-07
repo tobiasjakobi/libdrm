@@ -1086,6 +1086,115 @@ g2d_move(struct g2d_context *ctx, struct g2d_image *img,
 }
 
 /**
+ * g2d_move_multi - copy multiple content rectangles inside
+ *	a single buffer.
+ *	Also see g2d_move() for further comments.
+ *
+ * @ctx: a pointer to g2d_context structure.
+ * @img: a pointer to g2d_image structure including image and buffer
+ *	information to source.
+ * @src_rects: pointer to an array of g2d_rect structures acting as
+ *	blitting sources.
+ * @dst_rects: pointer to an array of g2d_rect structures acting as
+ *	blitting destinations.
+ * @num_rects: number of rectangle objects in array.
+ *
+ * Width and height of the destination rectangles is ignored, only
+ * the position is used (dimensions are determined by the source).
+ * Empty rectangles are silently ignored.
+ */
+drm_public int
+g2d_move_multi(struct g2d_context *ctx, struct g2d_image *img,
+		const struct g2d_rect *src_rects,
+		const struct g2d_rect *dst_rects, unsigned int num_rects)
+{
+	union g2d_rop4_val rop4;
+	unsigned int i;
+
+	if (num_rects == 0)
+		return 0;
+
+	if (g2d_check_space(ctx, 3 + num_rects * 7, 6))
+		return -ENOSPC;
+
+	g2d_add_base_addr(ctx, img, g2d_src);
+	g2d_add_base_cmd(ctx, SRC_COLOR_MODE_REG, img->color_mode);
+	g2d_add_base_cmd(ctx, SRC_STRIDE_REG, img->stride);
+
+	g2d_add_base_addr(ctx, img, g2d_dst);
+	g2d_add_base_cmd(ctx, DST_COLOR_MODE_REG, img->color_mode);
+	g2d_add_base_cmd(ctx, DST_STRIDE_REG, img->stride);
+
+	g2d_add_cmd(ctx, SRC_SELECT_REG, G2D_SELECT_MODE_NORMAL);
+	g2d_add_cmd(ctx, DST_SELECT_REG, G2D_SELECT_MODE_BGCOLOR);
+
+	rop4.val = 0;
+	rop4.data.unmasked_rop3 = G2D_ROP3_SRC;
+	g2d_add_cmd(ctx, ROP4_REG, rop4.val);
+
+	for (i = 0; i < num_rects; ++i) {
+		union g2d_point_val pt;
+		union g2d_direction_val dir;
+
+		unsigned int src_x, src_y, w, h;
+		unsigned int dst_x, dst_y, dst_w, dst_h;
+
+		src_x = src_rects[i].x;
+		src_y = src_rects[i].y;
+		w = src_rects[i].w;
+		h = src_rects[i].h;
+
+		dst_x = dst_rects[i].x;
+		dst_y = dst_rects[i].y;
+		dst_w = w;
+		dst_h = h;
+
+		if (src_x + w > img->width)
+			w = img->width - src_x;
+		if (src_y + h > img->height)
+			h = img->height - src_y;
+
+		if (dst_x + dst_w > img->width)
+			dst_w = img->width - dst_x;
+		if (dst_y + dst_h > img->height)
+			dst_h = img->height - dst_y;
+
+		w = MIN(w, dst_w);
+		h = MIN(h, dst_h);
+
+		if (w == 0 || h == 0)
+			continue;
+
+		dir.val[0] = dir.val[1] = 0;
+
+		if (dst_x >= src_x)
+			dir.data.src_x_direction = dir.data.dst_x_direction = 1;
+		if (dst_y >= src_y)
+			dir.data.src_y_direction = dir.data.dst_y_direction = 1;
+
+		g2d_set_direction(ctx, &dir);
+
+		pt.data.x = src_x;
+		pt.data.y = src_y;
+		g2d_add_cmd(ctx, SRC_LEFT_TOP_REG, pt.val);
+		pt.data.x += w;
+		pt.data.y += h;
+		g2d_add_cmd(ctx, SRC_RIGHT_BOTTOM_REG, pt.val);
+
+		pt.data.x = dst_x;
+		pt.data.y = dst_y;
+		g2d_add_cmd(ctx, DST_LEFT_TOP_REG, pt.val);
+		pt.data.x += w;
+		pt.data.y += h;
+		g2d_add_cmd(ctx, DST_RIGHT_BOTTOM_REG, pt.val);
+
+		g2d_add_cmd(ctx, BITBLT_START_REG, G2D_START_BITBLT | G2D_START_CASESEL);
+	}
+
+	return g2d_flush(ctx);
+}
+
+/**
  * g2d_copy_with_scale - copy contents in source buffer to destination buffer
  *	scaling up or down properly.
  *
