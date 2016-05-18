@@ -45,11 +45,8 @@ enum e_g2d_color_mode {
 	G2D_COLOR_FMT_A8,
 	/* Luminance 8bit: gray color */
 	G2D_COLOR_FMT_L8,
-	/* alpha 1bit */
-	G2D_COLOR_FMT_A1,
-	/* alpha 4bit */
-	G2D_COLOR_FMT_A4,
-	G2D_COLOR_FMT_MASK,				/* VER4.1 */
+
+	G2D_COLOR_FMT_MASK	= 0xF,
 
 	/* COLOR ORDER */
 	G2D_ORDER_AXRGB		= (0 << 4),		/* VER4.1 */
