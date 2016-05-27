@@ -543,7 +543,7 @@ drm_public int g2d_exec(struct g2d_context *ctx)
 	if (ctx->cmdlist_nr == 0)
 		return -EINVAL;
 
-	exec.async = 0;
+	exec.flags = 0;
 
 	ret = drmIoctl(ctx->fd, DRM_IOCTL_EXYNOS_G2D_EXEC, &exec);
 	if (ret < 0) {
