@@ -261,6 +261,26 @@ bo_fail:
 	return ret;
 }
 
+static int fimg2d_reset(struct g2d_context *ctx, struct exynos_device *dev)
+{
+	int ret;
+
+	ret = g2d_reset(ctx, G2D_RESET_LOCAL);
+	if (ret < 0) {
+		fprintf(stderr, "error: failed to issue local reset\n");
+		goto out;
+	}
+
+	ret = g2d_reset(ctx, G2D_RESET_GLOBAL);
+	if (ret < 0) {
+		fprintf(stderr, "error: failed to issue full reset\n");
+		goto out;
+	}
+
+out:
+	return ret;
+}
+
 int main(int argc, char **argv)
 {
 	int fd, ret;
@@ -298,6 +318,9 @@ int main(int argc, char **argv)
 
 	if (!ret)
 		ret = fimg2d_clear2(ctx, dev);
+
+	if (!ret)
+		ret = fimg2d_reset(ctx, dev);
 
 	g2d_fini(ctx);
 
