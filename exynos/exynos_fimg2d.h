@@ -45,6 +45,7 @@ enum e_g2d_color_mode {
 	G2D_COLOR_FMT_A8,
 	/* Luminance 8bit: gray color */
 	G2D_COLOR_FMT_L8,
+	G2D_COLOR_FMT_MAX,
 
 	G2D_COLOR_FMT_MASK	= 0xF,
 

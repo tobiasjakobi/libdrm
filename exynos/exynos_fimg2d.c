@@ -28,6 +28,7 @@
 #include <string.h>
 #include <errno.h>
 #include <assert.h>
+#include <stdbool.h>
 
 #include <sys/mman.h>
 #include <linux/stddef.h>
@@ -338,6 +339,36 @@ static int is_g2d_cmd(unsigned long cmd)
 	default:
 		return 0;
 	}
+}
+
+static int is_valid_color_mode(unsigned long mode)
+{
+	unsigned int fmt;
+	bool need_plane2 = false;
+
+	fmt = mode & G2D_COLOR_FMT_MASK;
+
+	if (fmt >= G2D_COLOR_FMT_MAX)
+		return 0;
+
+	switch (fmt) {
+	case G2D_COLOR_FMT_YCbCr444:
+		need_plane2 = true;
+		break;
+	case G2D_COLOR_FMT_YCbCr422:
+		break;
+	case G2D_COLOR_FMT_YCbCr420:
+		need_plane2 = true;
+		break;
+
+	default:
+		return 1;
+	}
+
+	if (need_plane2 && !(mode & G2D_YCbCr_2PLANE))
+		return 0;
+
+	return 1;
 }
 
 /*
