@@ -302,6 +302,21 @@ enum e_g2d_premult_round_mode {
 	G2D_PREMULT_ROUND_3  /* initial value */
 };
 
+/* YCbCr color value for fast solid fill ops. */
+union g2d_ycbcr_val {
+	unsigned int val;
+	struct {
+		/* [0:7] */
+		unsigned int Cr:8;
+		/* [15:8] */
+		unsigned int Cb:8;
+		/* [23:16] */
+		unsigned int Y:8;
+
+		unsigned int pad:8;
+	} data;
+};
+
 union g2d_point_val {
 	unsigned int val;
 	struct {
