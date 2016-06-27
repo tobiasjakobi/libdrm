@@ -371,6 +371,22 @@ static int is_valid_color_mode(unsigned long mode)
 	return 1;
 }
 
+static int is_plane2_mode(unsigned long mode)
+{
+	switch (mode) {
+	case G2D_COLOR_FMT_YCbCr444:
+	case G2D_COLOR_FMT_YCbCr420:
+		return 1;
+	case G2D_COLOR_FMT_YCbCr422:
+		break;
+
+	default:
+		return 0;
+	}
+
+	return (mode & G2D_YCbCr_2PLANE);
+}
+
 /*
  * g2d_add_base_cmd - add a base command to the command buffer.
  *
