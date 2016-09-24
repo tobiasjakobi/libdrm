@@ -158,7 +158,7 @@ static int g2d_work(struct g2d_context *ctx, struct g2d_image *img,
 		ret = g2d_solid_fill(ctx, img, x, y, w, h);
 
 		if (ret == 0)
-			g2d_exec(ctx);
+			g2d_exec2(ctx, G2D_EXEC_FLAG_ASYNC);
 
 		if (ret != 0) {
 			fprintf(stderr, "error: iteration %u (x = %u, x = %u, x = %u, x = %u) failed\n",
