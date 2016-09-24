@@ -501,6 +501,37 @@ static void g2d_add_image(struct g2d_context *ctx, struct g2d_image *img,
 }
 
 /*
+ * g2d_validate_image - validate a G2D image.
+ *
+ * @img: pointer to a g2d_image structure.
+ *
+ * This validates properties of the G2D image and returns
+ * a (negative) error code if the checks fail, or a
+ * positive value indicating the amount of space which
+ * adding this image to the command buffer would consume.
+ * This value can then we used with g2d_check_space().
+ */
+static int g2d_validate_image(struct g2d_image *img)
+{
+	unsigned int space = 0;
+
+	if (!is_valid_color_mode(img->color_mode))
+		return -EINVAL;
+
+	/*
+	 * We need at least base address, color mode and stride
+	 * register. If the color mode is YUV with two planes,
+	 * we need an additional register.
+	 */
+	space += 3;
+
+	if (is_plane2_mode(img->color_mode))
+		space += 1;
+
+	return space;
+}
+
+/*
  * g2d_set_direction - setup direction register (useful for overlapping blits).
  *
  * @ctx: a pointer to g2d_context structure.
