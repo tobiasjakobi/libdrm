@@ -746,14 +746,16 @@ g2d_solid_fill(struct g2d_context *ctx, struct g2d_image *img,
 {
 	union g2d_bitblt_cmd_val bitblt;
 	union g2d_point_val pt;
+	int ret;
 
-	if (g2d_check_space(ctx, 6, 3))
+	ret = g2d_validate_image(img);
+	if (ret < 0)
+		return ret;
+
+	if (g2d_check_space(ctx, 6, ret))
 		return -ENOSPC;
 
-	g2d_add_base_addr(ctx, img, g2d_dst);
-	g2d_add_base_cmd(ctx, DST_COLOR_MODE_REG, img->color_mode);
-	g2d_add_base_cmd(ctx, DST_STRIDE_REG, img->stride);
-
+	g2d_add_image(ctx, img, g2d_dst);
 	g2d_add_cmd(ctx, DST_SELECT_REG, G2D_SELECT_MODE_NORMAL);
 
 	if (x + w > img->width)
