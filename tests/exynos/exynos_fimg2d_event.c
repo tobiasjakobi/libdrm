@@ -99,25 +99,6 @@ static void* threadfunc(void *arg) {
 	pthread_exit(0);
 }
 
-/*
- * We need to wait until all G2D jobs are finished, otherwise we
- * potentially remove a BO which the engine still operates on.
- * This results in the following kernel message:
- * [drm:exynos_drm_gem_put_dma_addr] *ERROR* failed to lookup gem object.
- * Also any subsequent BO allocations fail then with:
- * [drm:exynos_drm_alloc_buf] *ERROR* failed to allocate buffer.
- */
-static void wait_all_jobs(struct g2d_job* jobs, unsigned num_jobs)
-{
-	unsigned i;
-
-	for (i = 0; i < num_jobs; ++i) {
-		while (jobs[i].busy)
-			usleep(500);
-	}
-
-}
-
 static struct g2d_job* free_job(struct g2d_job* jobs, unsigned num_jobs)
 {
 	unsigned i;
@@ -186,7 +167,6 @@ static int g2d_work(struct g2d_context *ctx, struct g2d_image *img,
 		}
 	}
 
-	wait_all_jobs(jobs, num_jobs);
 	free(jobs);
 
 	return 0;
