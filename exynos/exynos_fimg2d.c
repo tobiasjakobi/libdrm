@@ -450,6 +450,57 @@ static void g2d_add_base_addr(struct g2d_context *ctx, struct g2d_image *img,
 }
 
 /*
+ * g2d_add_image - add a G2D image to the command buffer.
+ *
+ * @ctx: pointer to a g2d_context structure.
+ * @img: pointer to a g2d_image structure.
+ * @reg: the type of the image (src/dst).
+ *
+ * This adds the common properties of a G2D image to the command
+ * buffer, which are base address, color mode and stride.
+ * The caller has to make sure that the G2D image is valid, i.e.
+ * has been properly checked via g2d_validate_image().
+ */
+static void g2d_add_image(struct g2d_context *ctx, struct g2d_image *img,
+			enum g2d_base_addr_reg reg)
+{
+	unsigned long mod, buf[2];
+
+	if (img->buf_type == G2D_IMGBUF_USERPTR) {
+		mod = G2D_BUF_USERPTR;
+		buf[0] = (unsigned long)&img->user_ptr[0];
+		buf[1] = (unsigned long)&img->user_ptr[1];
+	} else {
+		mod = 0;
+		buf[0] = img->bo[0];
+		buf[1] = img->bo[1];
+	}
+
+	switch (reg) {
+	case g2d_dst:
+		g2d_add_base_cmd(ctx, DST_BASE_ADDR_REG | mod, buf[0]);
+		g2d_add_base_cmd(ctx, DST_COLOR_MODE_REG, img->color_mode);
+		g2d_add_base_cmd(ctx, DST_STRIDE_REG, img->stride);
+
+		if (img->color_mode & G2D_YCbCr_2PLANE)
+			g2d_add_base_cmd(ctx, DST_PLANE2_BASE_ADDR_REG, buf[1]);
+		break;
+
+	case g2d_src:
+		g2d_add_base_cmd(ctx, SRC_BASE_ADDR_REG | mod, buf[0]);
+		g2d_add_base_cmd(ctx, SRC_COLOR_MODE_REG, img->color_mode);
+		g2d_add_base_cmd(ctx, SRC_STRIDE_REG, img->stride);
+
+		if (img->color_mode & G2D_YCbCr_2PLANE)
+			g2d_add_base_cmd(ctx, SRC_PLANE2_BASE_ADDR_REG, buf[1]);
+		break;
+
+	default:
+		assert(!"unreachable");
+	}
+}
+
+/*
  * g2d_set_direction - setup direction register (useful for overlapping blits).
  *
  * @ctx: a pointer to g2d_context structure.
