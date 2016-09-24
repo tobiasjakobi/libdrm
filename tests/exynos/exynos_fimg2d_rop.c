@@ -21,6 +21,7 @@
 #include <errno.h>
 #include <assert.h>
 #include <stdbool.h>
+#include <string.h>
 
 #include <xf86drm.h>
 
@@ -32,6 +33,37 @@ enum defaults {
 	buf_width = 16,
 	buf_height = 8
 };
+
+static void set_userspace(void *buf, unsigned elem_size,
+							unsigned pos, uint32_t value)
+{
+	switch (elem_size) {
+	case 1:
+	{
+		uint8_t *buf8 = buf;
+		buf8[pos] = (uint8_t)value;
+	}
+	break;
+
+	case 2:
+	{
+		uint16_t *buf16 = buf;
+		buf16[pos] = (uint16_t)value;
+	}
+	break;
+
+	case 4:
+	{
+		uint32_t *buf32 = buf;
+		buf32[pos] = (uint32_t)value;
+	}
+	break;
+
+	default:
+		assert(false);
+		break;
+	}
+}
 
 static void fill_userspace(void *buf, unsigned elem_size,
 							unsigned buf_size, uint32_t value) {
@@ -281,6 +313,170 @@ out:
 	return ret;
 }
 
+static int fimg2d_ycbcr(struct g2d_context *ctx, struct exynos_device *dev)
+{
+	struct g2d_image src_img = { 0 }, dst_img = { 0 };
+	struct exynos_bo *src_bo, *dst_bo, *plane2_bo;
+	void *src_buf, *dst_buf, *plane2_buf;
+
+	const unsigned num_pixels = buf_width * buf_height;
+	int ret = 0;
+
+	src_bo = exynos_bo_create(dev, num_pixels * sizeof(uint32_t), 0);
+	dst_bo = exynos_bo_create(dev, num_pixels * sizeof(uint16_t), 0);
+	plane2_bo = exynos_bo_create(dev, num_pixels * sizeof(uint16_t), 0);
+
+	if (!src_bo || !dst_bo || !plane2_bo) {
+		fprintf(stderr, "error: failed to create buffer object\n");
+		ret = -4;
+
+		goto fail;
+	}
+
+	src_img.width = buf_width;
+	src_img.height = buf_height;
+	src_img.stride = buf_width * sizeof(uint32_t);
+	src_img.color_mode = G2D_COLOR_FMT_ARGB8888 | G2D_ORDER_AXRGB;
+	src_img.buf_type = G2D_IMGBUF_GEM;
+	src_img.bo[0] = src_bo->handle;
+
+	/* For YCbCr buffers the stride parameter has to match the buffer width. */
+	dst_img.width = buf_width;
+	dst_img.height = buf_height;
+	dst_img.stride = buf_width;
+	dst_img.buf_type = G2D_IMGBUF_GEM;
+	dst_img.bo[0] = dst_bo->handle;
+	dst_img.bo[1] = plane2_bo->handle;
+
+	src_buf = exynos_bo_map(src_bo);
+	dst_buf = exynos_bo_map(dst_bo);
+	plane2_buf = exynos_bo_map(plane2_bo);
+
+	memset(dst_buf, 0x00, num_pixels * sizeof(uint16_t));
+	memset(plane2_buf, 0x00, num_pixels * sizeof(uint16_t));
+
+	src_img.color = 0xff808080;
+	ret = g2d_solid_fill(ctx, &src_img, 0, 0, buf_width, buf_height);
+
+	if (!ret)
+		ret = g2d_exec(ctx);
+
+	/* Set the first three pixels to different values. */
+	set_userspace(src_buf, 4, 0, 0xff000080);
+	set_userspace(src_buf, 4, 1, 0xff008000);
+	set_userspace(src_buf, 4, 2, 0xff800000);
+
+	if (ret) {
+		fprintf(stderr, "error: initial solid fill of source buffer failed\n");
+		ret = -5;
+
+		goto fail;
+	}
+
+	fprintf(stderr, "\nDoing YCbCr422 (uniplanar) copy...\n");
+
+	dst_img.color_mode = G2D_COLOR_FMT_YCbCr422 | G2D_YCbCr_1PLANE;
+	ret = g2d_copy(ctx, &src_img, &dst_img, 2, 0, 2, 0, buf_width - 2, buf_height);
+
+	if (!ret)
+		ret = g2d_exec(ctx);
+
+	if (!ret) {
+		fprintf(stderr, "YCbCr buffer content (YCbCr):\n");
+		print_userspace(dst_buf, sizeof(uint16_t), buf_width, buf_height);
+	}
+
+	if (ret) {
+		fprintf(stderr, "error: YCbCr422 (uniplanar) pass failed\n");
+		ret = -6;
+
+		goto fail;
+	}
+
+	memset(dst_buf, 0x00, num_pixels * sizeof(uint16_t));
+	memset(plane2_buf, 0x00, num_pixels * sizeof(uint16_t));
+
+	fprintf(stderr, "\nDoing YCbCr444 (biplanar) copy...\n");
+
+	dst_img.color_mode = G2D_COLOR_FMT_YCbCr444 | G2D_YCbCr_2PLANE;
+	ret = g2d_copy(ctx, &src_img, &dst_img, 2, 2, 2, 2, buf_width - 2, buf_height - 2);
+
+	if (!ret)
+		ret = g2d_exec(ctx);
+
+	if (!ret) {
+		fprintf(stderr, "YCbCr buffer content (plane1 / Y):\n");
+		print_userspace(dst_buf, sizeof(uint8_t), buf_width, buf_height);
+
+		fprintf(stderr, "YCbCr buffer content (plane2 / CbCr):\n");
+		print_userspace(plane2_buf, sizeof(uint16_t), buf_width, buf_height);
+	}
+
+	if (ret) {
+		fprintf(stderr, "error: YCbCr444 (biplanar) pass failed\n");
+		ret = -7;
+
+		goto fail;
+	}
+
+	memset(dst_buf, 0x00, num_pixels * sizeof(uint16_t));
+	memset(plane2_buf, 0x00, num_pixels * sizeof(uint16_t));
+
+	fprintf(stderr, "\nDoing YCbCr422 (biplanar) copy...\n");
+
+	dst_img.color_mode = G2D_COLOR_FMT_YCbCr422 | G2D_YCbCr_2PLANE;
+	ret = g2d_copy(ctx, &src_img, &dst_img, 0, 2, 0, 2, buf_width, buf_height - 2);
+
+	if (!ret)
+		ret = g2d_exec(ctx);
+
+	if (!ret) {
+		fprintf(stderr, "YCbCr buffer content (plane1 / Y):\n");
+		print_userspace(dst_buf, sizeof(uint8_t), buf_width, buf_height);
+
+		fprintf(stderr, "YCbCr buffer content (plane2 / CbCr):\n");
+		print_userspace(plane2_buf, sizeof(uint16_t), buf_width / 2, buf_height);
+	}
+
+	if (ret) {
+		fprintf(stderr, "error: YCbCr422 (biplanar) pass failed\n");
+		ret = -7;
+
+		goto fail;
+	}
+
+	memset(dst_buf, 0x00, num_pixels * sizeof(uint16_t));
+	memset(plane2_buf, 0x00, num_pixels * sizeof(uint16_t));
+
+	fprintf(stderr, "\nDoing YCbCr420 (biplanar) copy...\n");
+
+	dst_img.color_mode = G2D_COLOR_FMT_YCbCr420 | G2D_YCbCr_2PLANE;
+	ret = g2d_copy(ctx, &src_img, &dst_img, 0, 0, 0, 0, buf_width, buf_height);
+
+	if (!ret)
+		ret = g2d_exec(ctx);
+
+	if (!ret) {
+		fprintf(stderr, "YCbCr buffer content (plane1 / Y):\n");
+		print_userspace(dst_buf, sizeof(uint8_t), buf_width, buf_height);
+
+		fprintf(stderr, "YCbCr buffer content (plane2 / CbCr):\n");
+		print_userspace(plane2_buf, sizeof(uint16_t), buf_width / 2, buf_height / 2);
+	}
+
+	if (ret) {
+		fprintf(stderr, "error: YCbCr420 (biplanar) pass failed\n");
+		ret = -8;
+	}
+
+fail:
+	exynos_bo_destroy(src_bo);
+	exynos_bo_destroy(dst_bo);
+	exynos_bo_destroy(plane2_bo);
+
+	return ret;
+}
+
 int main(int argc, char **argv)
 {
 	int fd, ret;
@@ -321,6 +517,9 @@ int main(int argc, char **argv)
 
 	if (!ret)
 		ret = fimg2d_reset(ctx, dev);
+
+	if (!ret)
+		ret = fimg2d_ycbcr(ctx, dev);
 
 	g2d_fini(ctx);
 
