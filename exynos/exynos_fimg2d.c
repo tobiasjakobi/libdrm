@@ -703,29 +703,14 @@ drm_public void g2d_config_event(struct g2d_context *ctx, void *userdata)
 }
 
 /**
- * g2d_exec - start the dma to process all commands summited by g2d_flush().
+ * g2d_exec - instruct the kernel driver to execute the command buffers
+ *            which were submitted via g2d_flush().
  *
  * @ctx: a pointer to g2d_context structure.
  */
 drm_public int g2d_exec(struct g2d_context *ctx)
 {
-	struct drm_exynos_g2d_exec exec;
-	int ret;
-
-	if (ctx->cmdlist_nr == 0)
-		return -EINVAL;
-
-	exec.flags = 0;
-
-	ret = drmIoctl(ctx->fd, DRM_IOCTL_EXYNOS_G2D_EXEC, &exec);
-	if (ret < 0) {
-		fprintf(stderr, MSG_PREFIX "failed to execute.\n");
-		return ret;
-	}
-
-	ctx->cmdlist_nr = 0;
-
-	return ret;
+	return g2d_exec2(ctx, 0);
 }
 
 /**
