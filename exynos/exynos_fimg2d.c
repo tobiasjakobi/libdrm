@@ -876,6 +876,18 @@ g2d_copy(struct g2d_context *ctx, struct g2d_image *src,
 	union g2d_rop4_val rop4;
 	union g2d_point_val pt;
 	unsigned int src_w, src_h, dst_w, dst_h;
+	unsigned int space = 0;
+	int ret;
+
+	ret = g2d_validate_image(src);
+	if (ret < 0)
+		return ret;
+	space += ret;
+
+	ret = g2d_validate_image(dst);
+	if (ret < 0)
+		return ret;
+	space += ret;
 
 	src_w = w;
 	src_h = h;
@@ -899,16 +911,11 @@ g2d_copy(struct g2d_context *ctx, struct g2d_image *src,
 		return -EINVAL;
 	}
 
-	if (g2d_check_space(ctx, 8, 6))
+	if (g2d_check_space(ctx, 8, space))
 		return -ENOSPC;
 
-	g2d_add_base_addr(ctx, src, g2d_src);
-	g2d_add_base_cmd(ctx, SRC_COLOR_MODE_REG, src->color_mode);
-	g2d_add_base_cmd(ctx, SRC_STRIDE_REG, src->stride);
-
-	g2d_add_base_addr(ctx, dst, g2d_dst);
-	g2d_add_base_cmd(ctx, DST_COLOR_MODE_REG, dst->color_mode);
-	g2d_add_base_cmd(ctx, DST_STRIDE_REG, dst->stride);
+	g2d_add_image(ctx, src, g2d_src);
+	g2d_add_image(ctx, dst, g2d_dst);
 
 	g2d_add_cmd(ctx, SRC_SELECT_REG, G2D_SELECT_MODE_NORMAL);
 	g2d_add_cmd(ctx, DST_SELECT_REG, G2D_SELECT_MODE_BGCOLOR);
