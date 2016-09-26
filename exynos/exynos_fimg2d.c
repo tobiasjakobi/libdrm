@@ -1698,8 +1698,21 @@ g2d_blend(struct g2d_context *ctx, struct g2d_image *src,
 	union g2d_point_val pt;
 	union g2d_bitblt_cmd_val bitblt;
 	union g2d_blend_func_val blend;
-	unsigned int basecmd_space, cmd_space;
+	unsigned int basecmd_space = 0, cmd_space;
 	unsigned int src_w, src_h, dst_w, dst_h;
+	int ret;
+
+	ret = g2d_validate_image(src);
+	if (ret < 0)
+		return ret;
+
+	if (src->select_mode == G2D_SELECT_MODE_NORMAL)
+		basecmd_space += ret;
+
+	ret = g2d_validate_image(dst);
+	if (ret < 0)
+		return ret;
+	basecmd_space += ret;
 
 	src_w = w;
 	src_h = h;
@@ -1733,13 +1746,10 @@ g2d_blend(struct g2d_context *ctx, struct g2d_image *src,
 		return -EINVAL;
 	}
 
-	if (src->select_mode == G2D_SELECT_MODE_NORMAL) {
-		basecmd_space = 6;
+	if (src->select_mode == G2D_SELECT_MODE_NORMAL)
 		cmd_space = 9;
-	} else {
-		basecmd_space = 3;
+	else
 		cmd_space = 10;
-	}
 
 	if (g2d_check_space(ctx, cmd_space, basecmd_space))
 		return -ENOSPC;
@@ -1751,9 +1761,7 @@ g2d_blend(struct g2d_context *ctx, struct g2d_image *src,
 	 */
 	switch (src->select_mode) {
 	case G2D_SELECT_MODE_NORMAL:
-		g2d_add_base_addr(ctx, src, g2d_src);
-		g2d_add_base_cmd(ctx, SRC_COLOR_MODE_REG, src->color_mode);
-		g2d_add_base_cmd(ctx, SRC_STRIDE_REG, src->stride);
+		g2d_add_image(ctx, src, g2d_src);
 		break;
 	case G2D_SELECT_MODE_FGCOLOR:
 		g2d_add_cmd(ctx, FG_COLOR_REG, src->color);
@@ -1763,9 +1771,7 @@ g2d_blend(struct g2d_context *ctx, struct g2d_image *src,
 		break;
 	}
 
-	g2d_add_base_addr(ctx, dst, g2d_dst);
-	g2d_add_base_cmd(ctx, DST_COLOR_MODE_REG, dst->color_mode);
-	g2d_add_base_cmd(ctx, DST_STRIDE_REG, dst->stride);
+	g2d_add_image(ctx, dst, g2d_dst);
 
 	g2d_add_cmd(ctx, SRC_SELECT_REG, src->select_mode);
 
