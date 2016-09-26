@@ -430,26 +430,6 @@ static void g2d_add_cmd(struct g2d_context *ctx, unsigned long cmd,
 }
 
 /*
- * g2d_add_base_addr - helper function to set dst/src base address register.
- *
- * @ctx: a pointer to g2d_context structure.
- * @img: a pointer to the dst/src g2d_image structure.
- * @reg: the register that should be set.
- */
-static void g2d_add_base_addr(struct g2d_context *ctx, struct g2d_image *img,
-			enum g2d_base_addr_reg reg)
-{
-	const unsigned long cmd = (reg == g2d_dst) ?
-		DST_BASE_ADDR_REG : SRC_BASE_ADDR_REG;
-
-	if (img->buf_type == G2D_IMGBUF_USERPTR)
-		g2d_add_base_cmd(ctx, cmd | G2D_BUF_USERPTR,
-				(unsigned long)&img->user_ptr[0]);
-	else
-		g2d_add_base_cmd(ctx, cmd, img->bo[0]);
-}
-
-/*
  * g2d_add_image - add a G2D image to the command buffer.
  *
  * @ctx: pointer to a g2d_context structure.
