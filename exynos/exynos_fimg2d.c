@@ -1325,20 +1325,20 @@ g2d_move_multi(struct g2d_context *ctx, struct g2d_image *img,
 {
 	union g2d_rop4_val rop4;
 	unsigned int i;
+	int ret;
+
+	ret = g2d_validate_image(img);
+	if (ret < 0)
+		return ret;
 
 	if (num_rects == 0)
 		return 0;
 
-	if (g2d_check_space(ctx, 3 + num_rects * 7, 6))
+	if (g2d_check_space(ctx, 3 + num_rects * 7, 2 * ret))
 		return -ENOSPC;
 
-	g2d_add_base_addr(ctx, img, g2d_src);
-	g2d_add_base_cmd(ctx, SRC_COLOR_MODE_REG, img->color_mode);
-	g2d_add_base_cmd(ctx, SRC_STRIDE_REG, img->stride);
-
-	g2d_add_base_addr(ctx, img, g2d_dst);
-	g2d_add_base_cmd(ctx, DST_COLOR_MODE_REG, img->color_mode);
-	g2d_add_base_cmd(ctx, DST_STRIDE_REG, img->stride);
+	g2d_add_image(ctx, img, g2d_src);
+	g2d_add_image(ctx, img, g2d_dst);
 
 	g2d_add_cmd(ctx, SRC_SELECT_REG, G2D_SELECT_MODE_NORMAL);
 	g2d_add_cmd(ctx, DST_SELECT_REG, G2D_SELECT_MODE_BGCOLOR);
