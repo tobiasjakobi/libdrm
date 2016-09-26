@@ -1556,6 +1556,18 @@ g2d_scale_rop_multi(struct g2d_context *ctx, struct g2d_image *src,
 {
 	union g2d_bitblt_cmd_val bitblt_cmd;
 	unsigned int i, repeat_pad;
+	unsigned int space = 0;
+	int ret;
+
+	ret = g2d_validate_image(src);
+	if (ret < 0)
+		return ret;
+	space += ret;
+
+	ret = g2d_validate_image(dst);
+	if (ret < 0)
+		return ret;
+	space += ret;
 
 	repeat_pad = src->repeat_mode == G2D_REPEAT_MODE_PAD ? 1 : 0;
 
@@ -1569,16 +1581,11 @@ g2d_scale_rop_multi(struct g2d_context *ctx, struct g2d_image *src,
 		return -EINVAL;
 	}
 
-	if (g2d_check_space(ctx, 6 + num_rects * 7 + repeat_pad + (use_third_op ? 2 : 0), 6))
+	if (g2d_check_space(ctx, 6 + num_rects * 7 + repeat_pad + (use_third_op ? 2 : 0), space))
 		return -ENOSPC;
 
-	g2d_add_base_addr(ctx, src, g2d_src);
-	g2d_add_base_cmd(ctx, SRC_COLOR_MODE_REG, src->color_mode);
-	g2d_add_base_cmd(ctx, SRC_STRIDE_REG, src->stride);
-
-	g2d_add_base_addr(ctx, dst, g2d_dst);
-	g2d_add_base_cmd(ctx, DST_COLOR_MODE_REG, dst->color_mode);
-	g2d_add_base_cmd(ctx, DST_STRIDE_REG, dst->stride);
+	g2d_add_image(ctx, src, g2d_src);
+	g2d_add_image(ctx, dst, g2d_dst);
 
 	g2d_add_cmd(ctx, SRC_SELECT_REG, G2D_SELECT_MODE_NORMAL);
 	g2d_add_cmd(ctx, SRC_SCALE_CTRL_REG, G2D_SCALE_MODE_BILINEAR);
