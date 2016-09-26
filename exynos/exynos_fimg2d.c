@@ -76,7 +76,7 @@ struct g2d_context {
 	void				*event_userdata;
 };
 
-enum g2d_base_addr_reg {
+enum g2d_image_type {
 	g2d_dst = 0,
 	g2d_src
 };
@@ -434,7 +434,7 @@ static void g2d_add_cmd(struct g2d_context *ctx, unsigned long cmd,
  *
  * @ctx: pointer to a g2d_context structure.
  * @img: pointer to a g2d_image structure.
- * @reg: the type of the image (src/dst).
+ * @img_type: the type of the image (src/dst).
  *
  * This adds the common properties of a G2D image to the command
  * buffer, which are base address, color mode and stride.
@@ -442,7 +442,7 @@ static void g2d_add_cmd(struct g2d_context *ctx, unsigned long cmd,
  * has been properly checked via g2d_validate_image().
  */
 static void g2d_add_image(struct g2d_context *ctx, struct g2d_image *img,
-			enum g2d_base_addr_reg reg)
+			enum g2d_image_type img_type)
 {
 	unsigned long mod, buf[2];
 
@@ -456,7 +456,7 @@ static void g2d_add_image(struct g2d_context *ctx, struct g2d_image *img,
 		buf[1] = img->bo[1];
 	}
 
-	switch (reg) {
+	switch (img_type) {
 	case g2d_dst:
 		g2d_add_base_cmd(ctx, DST_BASE_ADDR_REG | mod, buf[0]);
 		g2d_add_base_cmd(ctx, DST_COLOR_MODE_REG, img->color_mode);
