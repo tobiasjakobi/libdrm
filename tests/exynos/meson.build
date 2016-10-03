@@ -82,3 +82,13 @@ exynos_fimg2d_rop = executable(
   dependencies : dep_threads,
   install : with_install_tests,
 )
+
+exynos_mixer_cfg = executable(
+  'exynos_mixer_cfg',
+  files('exynos_mixer_cfg.c'),
+  c_args : warn_c_args,
+  include_directories : [inc_root, inc_drm, inc_exynos],
+  link_with : [libdrm, libdrm_exynos],
+  dependencies : dep_threads,
+  install : with_install_tests,
+)
