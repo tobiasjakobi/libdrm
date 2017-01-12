@@ -303,6 +303,15 @@ static int fimg2d_reset(struct g2d_context *ctx, struct exynos_device *dev)
 		goto out;
 	}
 
+	ret = g2d_engine_hang(ctx);
+	if (ret == 0)
+		ret = g2d_exec(ctx);
+
+	if (ret < 0) {
+		fprintf(stderr, "error: failed to submit \"engine hang\" command\n");
+		goto out;
+	}
+
 	ret = g2d_reset(ctx, G2D_RESET_GLOBAL);
 	if (ret < 0) {
 		fprintf(stderr, "error: failed to issue full reset\n");
