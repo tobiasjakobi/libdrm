@@ -471,6 +471,9 @@ struct g2d_rect {
 
 struct g2d_context;
 
+/* Debug API */
+int g2d_engine_hang(struct g2d_context *ctx);
+
 struct g2d_context *g2d_init(int fd);
 void g2d_fini(struct g2d_context *ctx);
 int g2d_reset(struct g2d_context *ctx, enum e_g2d_reset_type type);

@@ -575,6 +575,32 @@ static int g2d_flush(struct g2d_context *ctx)
 }
 
 /**
+ * g2d_engine_hang - issue a special cmdlist that hangs the G2D engine.
+ *
+ * @ctx: a pointer to a g2d_context structure.
+ *
+ * This only works if the G2D kernel driver was build with some
+ * specific debug define.
+ */
+drm_public int g2d_engine_hang(struct g2d_context *ctx)
+{
+	int ret;
+	struct drm_exynos_g2d_set_cmdlist2 cmdlist = {0};
+
+	cmdlist.flags = 0x1;
+
+	ret = drmIoctl(ctx->fd, DRM_IOCTL_EXYNOS_G2D_SET_CMDLIST2, &cmdlist);
+	if (ret < 0) {
+		fprintf(stderr, MSG_PREFIX "failed to set \"engine hang\" cmdlist.\n");
+		return ret;
+	}
+
+	ctx->cmdlist_nr++;
+
+	return ret;
+}
+
+/**
  * g2d_init - create a new g2d context and get hardware version.
  *
  * @fd: a file descriptor to an opened drm device.
