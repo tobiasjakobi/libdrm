@@ -1177,15 +1177,29 @@ bo_fb_create(int fd, unsigned int fourcc, const uint32_t w, const uint32_t h,
              enum util_fill_pattern pat, struct bo **out_bo, unsigned int *out_fb_id)
 {
 	uint32_t handles[4] = {0}, pitches[4] = {0}, offsets[4] = {0};
+	uint64_t modifiers[4] = {0};
 	struct bo *bo;
 	unsigned int fb_id;
+	uint32_t plane_flags = 0;
+	int ret;
 
 	bo = bo_create(fd, fourcc, w, h, handles, pitches, offsets, pat);
 
 	if (bo == NULL)
 		return -1;
 
-	if (drmModeAddFB2(fd, w, h, fourcc, handles, pitches, offsets, &fb_id, 0)) {
+	if (fourcc == DRM_FORMAT_NV12) {
+		plane_flags |= DRM_MODE_FB_MODIFIERS;
+		modifiers[0] = DRM_FORMAT_MOD_SAMSUNG_64_32_TILE;
+		modifiers[1] = DRM_FORMAT_MOD_SAMSUNG_64_32_TILE;
+
+		ret = drmModeAddFB2WithModifiers(fd, w, h, fourcc, handles, pitches, offsets, modifiers, &fb_id, plane_flags);
+	} else {
+		ret = drmModeAddFB2(fd, w, h, fourcc, handles, pitches, offsets, &fb_id, plane_flags);
+	}
+
+
+	if (ret) {
 		fprintf(stderr, "failed to add fb (%ux%u): %s\n", w, h, strerror(errno));
 		bo_destroy(bo);
 		return -1;

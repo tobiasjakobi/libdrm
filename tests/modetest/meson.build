@@ -18,12 +18,14 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+dep_dl = cc.find_library('dl', required : false)
+
 modetest = executable(
   'modetest',
   files('buffers.c', 'cursor.c', 'modetest.c'),
   c_args : [libdrm_c_args, '-Wno-pointer-arith'],
   include_directories : [inc_root, inc_tests, inc_drm],
-  dependencies : [dep_threads, dep_cairo],
+  dependencies : [dep_threads, dep_cairo, dep_dl],
   link_with : [libdrm, libutil],
   install : with_install_tests,
 )

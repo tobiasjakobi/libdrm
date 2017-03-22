@@ -40,6 +40,9 @@
 
 #include "buffers.h"
 
+#include <dlfcn.h>
+typedef int (*nv12_to_nv12mt_fct)(const uint8_t*[2], uint8_t*[2], unsigned, unsigned);
+
 struct bo
 {
 	int fd;
@@ -333,6 +336,29 @@ bo_create(int fd, unsigned int format,
 	}
 
 	util_fill_pattern(format, pattern, planes, width, height, pitches[0]);
+
+	if (format == DRM_FORMAT_NV12) {
+		static void* handle = NULL;
+		static nv12_to_nv12mt_fct nv12_to_nv12mt = NULL;
+
+		uint8_t *temp_mem;
+
+		if (!handle) {
+			handle = dlopen("libnv12mt.so", RTLD_LAZY);
+			nv12_to_nv12mt = (nv12_to_nv12mt_fct)dlsym(handle, "nv12_to_nv12mt");
+
+			if (!nv12_to_nv12mt)
+				abort();
+		}
+
+		temp_mem = malloc(width * virtual_height * sizeof(uint8_t));
+		nv12_to_nv12mt(
+			(const uint8_t*[2]){planes[0], planes[1]},
+			(uint8_t*[2]){temp_mem, temp_mem + offsets[1]}, width, height);
+		memcpy(planes[0], temp_mem, width * virtual_height);
+		free(temp_mem);
+	}
+
 	bo_unmap(bo);
 
 	return bo;
