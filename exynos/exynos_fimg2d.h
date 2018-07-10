@@ -107,9 +107,9 @@ enum e_g2d_mask_mode {
 };
 
 enum e_g2d_select_mode {
-	G2D_SELECT_MODE_NORMAL	= (0 << 0),
-	G2D_SELECT_MODE_FGCOLOR = (1 << 0),
-	G2D_SELECT_MODE_BGCOLOR = (2 << 0),
+	G2D_SELECT_MODE_NORMAL,
+	G2D_SELECT_MODE_FGCOLOR,
+	G2D_SELECT_MODE_BGCOLOR,
 };
 
 enum e_g2d_repeat_mode {
