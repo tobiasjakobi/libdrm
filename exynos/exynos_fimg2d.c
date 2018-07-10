@@ -430,6 +430,31 @@ static void g2d_add_cmd(struct g2d_context *ctx, unsigned long cmd,
 }
 
 /*
+ * g2d_add_color - add the G2D image's color to the command buffer.
+ *
+ * @ctx: pointer to a g2d_context structure.
+ * @img: pointer to a g2d_image structure.
+ *
+ * This adds the color property of the G2D image to the command
+ * buffer. The select mode property defines if the color
+ * becomes foreground or background.
+ */
+static void g2d_add_color(struct g2d_context *ctx, struct g2d_image *img)
+{
+	switch (img->select_mode) {
+	case G2D_SELECT_MODE_FGCOLOR:
+		g2d_add_cmd(ctx, FG_COLOR_REG, img->color);
+		break;
+	case G2D_SELECT_MODE_BGCOLOR:
+		g2d_add_cmd(ctx, BG_COLOR_REG, img->color);
+		break;
+	case G2D_SELECT_MODE_NORMAL:
+	default:
+		break;
+	}
+}
+
+/*
  * g2d_add_image - add a G2D image to the command buffer.
  *
  * @ctx: pointer to a g2d_context structure.
@@ -1153,14 +1178,23 @@ g2d_copy_rop(struct g2d_context *ctx, struct g2d_image *src,
 		return -EINVAL;
 	}
 
+	if (use_third_op && (src->select_mode == G2D_SELECT_MODE_FGCOLOR ||
+			     dst->select_mode == G2D_SELECT_MODE_FGCOLOR)) {
+		fprintf(stderr, MSG_PREFIX "fg color not available with third op.\n");
+		return -EINVAL;
+	}
+
 	if (g2d_check_space(ctx, 9 + (use_third_op ? 2 : 0), space))
 		return -ENOSPC;
 
 	g2d_add_image(ctx, src, g2d_src);
 	g2d_add_image(ctx, dst, g2d_dst);
 
-	g2d_add_cmd(ctx, SRC_SELECT_REG, G2D_SELECT_MODE_NORMAL);
-	g2d_add_cmd(ctx, DST_SELECT_REG, G2D_SELECT_MODE_NORMAL);
+	g2d_add_color(ctx, src);
+	g2d_add_color(ctx, dst);
+
+	g2d_add_cmd(ctx, SRC_SELECT_REG, src->select_mode);
+	g2d_add_cmd(ctx, DST_SELECT_REG, dst->select_mode);
 
 	pt.data.x = src_x;
 	pt.data.y = src_y;
