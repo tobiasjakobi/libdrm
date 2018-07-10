@@ -521,6 +521,8 @@ typedef struct _drmModeAtomicReq drmModeAtomicReq, *drmModeAtomicReqPtr;
 
 extern drmModeAtomicReqPtr drmModeAtomicAlloc(void);
 extern drmModeAtomicReqPtr drmModeAtomicDuplicate(drmModeAtomicReqPtr req);
+extern int drmModeAtomicClone(const drmModeAtomicReq *old,
+			      drmModeAtomicReq *new);
 extern int drmModeAtomicMerge(drmModeAtomicReqPtr base,
 			      drmModeAtomicReqPtr augment);
 extern void drmModeAtomicFree(drmModeAtomicReqPtr req);

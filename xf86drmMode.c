@@ -1278,6 +1278,31 @@ drm_public drmModeAtomicReqPtr drmModeAtomicDuplicate(drmModeAtomicReqPtr old)
 	return new;
 }
 
+drm_public int drmModeAtomicClone(const drmModeAtomicReq *old, drmModeAtomicReq *new)
+{
+	if (!old || !new)
+		return -EINVAL;
+
+	if (old->cursor >= new->size_items) {
+		drmModeAtomicReqItem *new_items;
+
+		new_items = drmMalloc(old->cursor * sizeof(*old->items));
+		if (!new_items)
+			return -ENOMEM;
+
+		free(new->items);
+		new->items = new_items;
+		new->size_items = old->cursor;
+	}
+
+	memcpy(new->items, old->items, old->cursor * sizeof(*old->items));
+
+	new->cursor = old->cursor;
+	new->dirty = 1;
+
+	return 0;
+}
+
 drm_public int drmModeAtomicMerge(drmModeAtomicReqPtr base,
                                   drmModeAtomicReqPtr augment)
 {
