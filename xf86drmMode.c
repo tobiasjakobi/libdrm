@@ -1319,8 +1319,16 @@ drm_public int drmModeAtomicGetCursor(drmModeAtomicReqPtr req)
 
 drm_public void drmModeAtomicSetCursor(drmModeAtomicReqPtr req, int cursor)
 {
-	if (req)
-		req->cursor = cursor;
+	if (!req)
+		return;
+
+	if (cursor < 0)
+		return;
+
+	if (req->cursor != cursor)
+		req->dirty = 1;
+
+	req->cursor = cursor;
 }
 
 drm_public int drmModeAtomicAddProperty(drmModeAtomicReqPtr req,
